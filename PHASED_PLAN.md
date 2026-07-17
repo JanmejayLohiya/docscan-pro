@@ -86,3 +86,13 @@ Create a Firebase project → add an Android app with package **`com.docscan.pro
 
 ### 6. Release signing (for Phase 6)
 Generate an upload keystore; store it + passwords as GitHub Actions secrets; add a release build step. (Later.)
+
+---
+
+## Future: iOS (deferred)
+Decision: **iOS is deferred**; stay Android-native for now. When revisiting, the app is native Kotlin (Android-only), so iOS means either a cross-platform rewrite (Flutter / Kotlin Multiplatform — one codebase for both) or a separate Swift app.
+
+**Testing on an iPhone without the App Store** (for reference):
+- **Requires a Mac to build**, OR a **GitHub Actions macOS runner** (free for public repos) to build in the cloud.
+- **Free + no Mac:** macOS CI builds an unsigned `.ipa` → install on your own iPhone from Windows using **Sideloadly** + a free Apple ID (re-sign every 7 days, max 3 apps).
+- **$99/yr Apple Developer Program:** unlocks **TestFlight** (build + sign + upload via CI, testers install via the TestFlight app — no Mac needed) and removes the 7-day expiry.
