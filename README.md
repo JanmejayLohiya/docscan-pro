@@ -10,6 +10,7 @@ A free, cross-platform document scanning app (Adobe Scan alternative) with unlim
 | [ERD.md](ERD.md) | Entity-relationship data model (entities, attributes, relationships, enums, indexes) |
 | [BUILD_SPEC.md](BUILD_SPEC.md) | Engineering build spec — stack, architecture, modules, integrations, CI/CD, milestones |
 | [ENGINEERING_SPEC.md](ENGINEERING_SPEC.md) | Detailed technical design — interfaces, sequence flows, sync state machine, contracts, error taxonomy, testing, acceptance criteria |
+| [PHASED_PLAN.md](PHASED_PLAN.md) | Phased development roadmap (P0–P6) + what's needed to sync the repo and build the APK |
 | [wireframes.html](wireframes.html) | Low-fidelity wireframes — 10 core screens, annotated to the PRD |
 | [scan-pro-figma-wireframes.html](scan-pro-figma-wireframes.html) | Low-fidelity wireframes as Figma-import-ready mobile artboards |
 | [figma-design.html](figma-design.html) | High-fidelity UI (minimal & neutral), ready to import into Figma |
