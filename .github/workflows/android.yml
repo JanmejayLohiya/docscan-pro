@@ -1,0 +1,50 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ "android/**", ".github/workflows/android.yml" ]
+  pull_request:
+    paths: [ "android/**", ".github/workflows/android.yml" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      # No gradle-wrapper.jar is committed, so generate a pinned wrapper using
+      # the Gradle preinstalled on the runner. This keeps the repo free of the
+      # binary jar while still building against a fixed Gradle version.
+      - name: Generate Gradle wrapper (pinned)
+        run: gradle wrapper --gradle-version 8.11.1 --distribution-type bin
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docscan-pro-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

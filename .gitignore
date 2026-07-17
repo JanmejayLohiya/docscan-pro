@@ -1,0 +1,26 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/
+
+# Node (cloudflare)
+node_modules/
+.wrangler/
+dist/
+
+# Android
+.gradle/
+build/
+local.properties
+*.keystore
+*.jks
+key.properties
+
+# Secrets
+.env
+.dev.vars
+
+# Local Claude Code session settings
+.claude/settings.local.json

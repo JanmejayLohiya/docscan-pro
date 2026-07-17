@@ -1,0 +1,574 @@
+<style>
+  :root{
+    --paper:#e9ebef; --panel:#f4f5f7; --card:#ffffff; --ink:#23272e; --muted:#767d88;
+    --line:#c6ccd4; --line-2:#9aa3ae; --fill:#e4e8ed; --fill-2:#d3d9e0;
+    --accent:#3358d4; --accent-soft:#e0e6fb; --frame:#1b1e24; --frame-2:#0e1013;
+    --ok:#1f8f5f; --warn:#c98a1a;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --paper:#0f1114; --panel:#16181c; --card:#1b1e23; --ink:#e7eaee; --muted:#8b939d;
+      --line:#363c44; --line-2:#525a64; --fill:#22272d; --fill-2:#2c333a;
+      --accent:#7d9bff; --accent-soft:#25304f; --frame:#000; --frame-2:#000;
+      --ok:#43b581; --warn:#e0a640;
+    }
+  }
+  :root[data-theme="light"]{
+    --paper:#e9ebef; --panel:#f4f5f7; --card:#ffffff; --ink:#23272e; --muted:#767d88;
+    --line:#c6ccd4; --line-2:#9aa3ae; --fill:#e4e8ed; --fill-2:#d3d9e0;
+    --accent:#3358d4; --accent-soft:#e0e6fb; --frame:#1b1e24; --frame-2:#0e1013; --ok:#1f8f5f; --warn:#c98a1a;
+  }
+  :root[data-theme="dark"]{
+    --paper:#0f1114; --panel:#16181c; --card:#1b1e23; --ink:#e7eaee; --muted:#8b939d;
+    --line:#363c44; --line-2:#525a64; --fill:#22272d; --fill-2:#2c333a;
+    --accent:#7d9bff; --accent-soft:#25304f; --frame:#000; --frame-2:#000; --ok:#43b581; --warn:#e0a640;
+  }
+
+  *{box-sizing:border-box}
+  .wf{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5;
+      padding:40px 24px 72px;}
+  .wrap{max-width:1180px;margin:0 auto}
+
+  .masthead{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:34px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+           color:var(--muted);margin:0 0 10px}
+  h1{font-size:30px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+  .lede{color:var(--muted);font-size:15px;max-width:62ch;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .tag{font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--muted);
+       border:1px solid var(--line);border-radius:999px;padding:4px 11px;background:var(--panel)}
+
+  .legend{display:flex;flex-wrap:wrap;gap:18px 26px;background:var(--panel);border:1px solid var(--line);
+          border-radius:12px;padding:16px 20px;margin-bottom:38px}
+  .legend h2{font-size:11px;font-family:var(--mono);letter-spacing:.16em;text-transform:uppercase;
+             color:var(--muted);margin:0;width:100%;font-weight:600}
+  .lg{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--muted)}
+  .swatch{width:26px;height:16px;border-radius:3px;flex:none}
+  .swatch.pri{background:var(--accent)}
+  .swatch.box{background:var(--fill);border:1px solid var(--line)}
+  .swatch.img{background:
+     linear-gradient(to top right,transparent calc(50% - .8px),var(--line-2),transparent calc(50% + .8px)),
+     linear-gradient(to top left,transparent calc(50% - .8px),var(--line-2),transparent calc(50% + .8px)),
+     var(--fill)}
+  .swatch.note{background:var(--accent-soft);border:1px solid var(--accent)}
+
+  .flow{margin-bottom:44px}
+  .flowrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+  .step{font-family:var(--mono);font-size:12px;background:var(--card);border:1px solid var(--line);
+        border-radius:8px;padding:8px 12px;color:var(--ink)}
+  .step b{color:var(--accent);font-weight:600;margin-right:6px}
+  .arrow{color:var(--line-2);font-size:15px}
+
+  .sec{margin:0 0 20px}
+  .sec-h{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--line);
+         padding-bottom:10px;margin:44px 0 26px}
+  .sec-n{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600}
+  .sec-h h3{font-size:18px;font-weight:600;margin:0}
+  .sec-h span{color:var(--muted);font-size:13px;margin-left:auto}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:34px 26px}
+
+  .screen{display:flex;flex-direction:column}
+  .phone{background:var(--frame);border-radius:30px;padding:10px;box-shadow:0 1px 0 var(--line);
+         align-self:center;width:262px}
+  .glass{background:var(--card);border-radius:22px;overflow:hidden;height:520px;display:flex;flex-direction:column;position:relative}
+  .notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:74px;height:5px;
+          background:var(--frame-2);border-radius:999px;z-index:5}
+
+  .stat{display:flex;justify-content:space-between;align-items:center;padding:12px 16px 6px;
+        font-family:var(--mono);font-size:10px;color:var(--muted)}
+  .body{flex:1;padding:6px 14px 12px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+  .body.pad0{padding:0}
+  .body.center{justify-content:center;align-items:stretch;gap:14px}
+
+  .appbar{display:flex;align-items:center;gap:10px;padding:4px 2px 8px}
+  .appbar .ttl{font-size:15px;font-weight:600}
+  .appbar .sp{margin-left:auto;display:flex;gap:8px}
+
+  .bar{height:9px;border-radius:4px;background:var(--fill)}
+  .bar.s{width:45%} .bar.m{width:70%} .bar.l{width:100%} .bar.xs{width:28%;height:7px}
+  .barwrap{display:flex;flex-direction:column;gap:6px}
+
+  .icon{width:20px;height:20px;border-radius:5px;background:var(--fill);border:1px solid var(--line);flex:none}
+  .icon.r{border-radius:50%}
+
+  .field{height:34px;border:1px solid var(--line-2);border-radius:8px;background:var(--card);
+          display:flex;align-items:center;padding:0 10px;font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+  .btn{height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+       font-size:12.5px;font-weight:600;letter-spacing:.01em}
+  .btn.pri{background:var(--accent);color:#fff}
+  .btn.gho{background:transparent;border:1px solid var(--line-2);color:var(--ink)}
+  .seg{display:flex;border:1px solid var(--line-2);border-radius:9px;overflow:hidden}
+  .seg div{flex:1;text-align:center;font-size:11.5px;padding:8px 0;color:var(--muted)}
+  .seg div.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+
+  .img{background:
+     linear-gradient(to top right,transparent calc(50% - .8px),var(--line-2),transparent calc(50% + .8px)),
+     linear-gradient(to top left,transparent calc(50% - .8px),var(--line-2),transparent calc(50% + .8px)),
+     var(--fill);border:1px solid var(--line);border-radius:8px}
+
+  .list{display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:9px;
+       padding:9px 10px;background:var(--panel)}
+  .row .txt{flex:1;display:flex;flex-direction:column;gap:5px}
+  .pill{font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:999px;border:1px solid var(--line-2);color:var(--muted)}
+  .pill.ok{color:var(--ok);border-color:var(--ok)}
+  .pill.warn{color:var(--warn);border-color:var(--warn)}
+  .pill.acc{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+
+  .fab{position:absolute;left:50%;transform:translateX(-50%);bottom:60px;width:60px;height:60px;
+       border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;
+       justify-content:center;font-size:26px;font-weight:400;z-index:4;box-shadow:0 3px 10px rgba(0,0,0,.28)}
+  .tabbar{height:50px;border-top:1px solid var(--line);display:flex;background:var(--card)}
+  .tabbar div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+  .tabbar .ti2{width:18px;height:18px;border-radius:5px;background:var(--fill);border:1px solid var(--line)}
+  .tabbar .tl{font-size:8.5px;color:var(--muted)}
+  .tabbar div.on .ti2{background:var(--accent);border-color:var(--accent)}
+  .tabbar div.on .tl{color:var(--accent);font-weight:600}
+
+  .cam{flex:1;background:var(--frame-2);position:relative;display:flex;align-items:center;justify-content:center}
+  .doc-frame{width:66%;height:60%;border:2px solid var(--accent);border-radius:6px;position:relative;background:rgba(51,88,212,.08)}
+  .corner{position:absolute;width:16px;height:16px;border:3px solid #fff}
+  .corner.tl{top:-2px;left:-2px;border-right:0;border-bottom:0}
+  .corner.tr{top:-2px;right:-2px;border-left:0;border-bottom:0}
+  .corner.bl{bottom:-2px;left:-2px;border-right:0;border-top:0}
+  .corner.br{bottom:-2px;right:-2px;border-left:0;border-top:0}
+  .cam-top{position:absolute;top:10px;left:0;right:0;display:flex;justify-content:space-between;padding:0 14px;
+           font-family:var(--mono);font-size:10px;color:#cfd4dc}
+  .cam-bot{position:absolute;bottom:14px;left:0;right:0;display:flex;align-items:center;justify-content:space-around}
+  .shutter{width:52px;height:52px;border-radius:50%;background:#fff;border:3px solid var(--line-2)}
+  .cam-thumb{width:36px;height:36px;border-radius:6px;background:#2a2f37;border:1px solid #454c56;position:relative}
+  .cam-thumb::after{content:"3";position:absolute;top:-6px;right:-6px;width:16px;height:16px;background:var(--accent);
+                    color:#fff;border-radius:50%;font-size:9px;font-family:var(--mono);display:flex;align-items:center;justify-content:center}
+  .cam-mini{width:36px;height:36px;border-radius:8px;border:1px solid #454c56;background:#22272e;color:#cfd4dc;
+            display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mono);text-align:center;line-height:1.1}
+
+  .canvas{flex:1;border:1px solid var(--line);border-radius:8px;position:relative;overflow:hidden;
+          background:
+     linear-gradient(to top right,transparent calc(50% - .8px),var(--line),transparent calc(50% + .8px)),
+     linear-gradient(to top left,transparent calc(50% - .8px),var(--line),transparent calc(50% + .8px)),
+     var(--fill)}
+  .wmark{position:absolute;top:38%;left:26%;transform:rotate(-24deg);font-family:var(--mono);
+         font-size:15px;color:var(--line-2);letter-spacing:.1em;opacity:.9}
+  .erase{position:absolute;top:34%;left:22%;width:120px;height:34px;border:1.5px dashed var(--accent);
+         border-radius:6px;background:var(--accent-soft)}
+  .brush{position:absolute;top:46%;left:52%;width:22px;height:22px;border-radius:50%;
+         border:2px solid var(--accent);background:rgba(51,88,212,.18)}
+  .thumbstrip{display:flex;gap:8px;overflow:hidden}
+  .tn{width:44px;height:58px;border-radius:5px;flex:none;position:relative;background:
+     linear-gradient(to top right,transparent calc(50% - .7px),var(--line-2),transparent calc(50% + .7px)),
+     linear-gradient(to top left,transparent calc(50% - .7px),var(--line-2),transparent calc(50% + .7px)),
+     var(--fill);border:1px solid var(--line)}
+  .tn.sel{border:2px solid var(--accent)}
+  .tn.add{background:var(--panel);border:1.5px dashed var(--line-2);display:flex;align-items:center;
+          justify-content:center;color:var(--muted);font-size:20px;font-weight:300}
+  .tn .n{position:absolute;bottom:2px;right:3px;font-family:var(--mono);font-size:8px;color:var(--muted)}
+  .toolbar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 4px;padding:8px 4px 2px}
+  .tool{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:8.5px;color:var(--muted);
+        font-family:var(--mono)}
+  .tool .ic{width:22px;height:22px;border-radius:6px;background:var(--fill);border:1px solid var(--line)}
+  .tool.on .ic{background:var(--accent);border-color:var(--accent)}
+  .tool.on{color:var(--accent);font-weight:600}
+
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);
+          border-radius:16px 16px 0 0;padding:14px 16px 18px;display:flex;flex-direction:column;gap:11px;z-index:4;
+          box-shadow:0 -6px 20px rgba(0,0,0,.14)}
+  .grabber{width:38px;height:4px;background:var(--line-2);border-radius:999px;align-self:center;margin-bottom:2px}
+  .scrim{position:absolute;inset:0;background:rgba(10,12,16,.34);z-index:3}
+
+  .foldergrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .folder{border:1px solid var(--line);border-radius:9px;padding:10px;background:var(--panel);
+          display:flex;flex-direction:column;gap:7px;height:78px}
+  .folder .ft{width:26px;height:20px;border-radius:4px 4px 4px 4px;background:var(--fill-2);border:1px solid var(--line-2);
+              position:relative}
+  .folder .ft::before{content:"";position:absolute;top:-5px;left:2px;width:12px;height:5px;background:var(--fill-2);
+                      border:1px solid var(--line-2);border-bottom:0;border-radius:3px 3px 0 0}
+
+  .lang{display:flex;align-items:center;gap:8px}
+  .lang .box{flex:1;border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;font-family:var(--mono);
+             font-size:11px;color:var(--ink);display:flex;justify-content:space-between;align-items:center}
+  .swap{width:26px;height:26px;border-radius:50%;border:1px solid var(--line-2);color:var(--muted);
+        display:flex;align-items:center;justify-content:center;flex:none;font-size:12px}
+
+  .caption{margin-top:16px}
+  .caption .cn{font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:600;letter-spacing:.06em}
+  .caption h4{font-size:14px;font-weight:600;margin:3px 0 8px}
+  .notes{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+  .notes li{position:relative;padding-left:24px;font-size:12px;color:var(--muted);line-height:1.45}
+  .notes li .m{position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--accent-soft);
+               border:1px solid var(--accent);color:var(--accent);font-family:var(--mono);font-size:9px;font-weight:700;
+               display:flex;align-items:center;justify-content:center}
+
+  .foot{margin-top:52px;border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:12.5px}
+  .foot code{font-family:var(--mono);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:11px}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+</style>
+
+<div class="wf">
+<h2 class="sr-only">Low-fidelity wireframes for the ScanPro Android scanning app, showing ten screens across sign-up, home, scanning, page editing, folders and translation flows.</h2>
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">ScanPro · Android v1 · Low-fidelity wireframes</p>
+    <h1>Screen &amp; flow wireframes</h1>
+    <p class="lede">Structure and interaction only — no final visual design. Grey blocks stand in for text and images; the accent marks primary actions and interactive elements. Annotations map each screen back to the PRD requirements.</p>
+    <div class="meta">
+      <span class="tag">10 screens</span>
+      <span class="tag">Mobile · portrait</span>
+      <span class="tag">Free core + paid power features</span>
+      <span class="tag">Maps to PRD §5</span>
+    </div>
+  </header>
+
+  <section class="legend" aria-label="Legend">
+    <h2>Reading these wireframes</h2>
+    <div class="lg"><span class="swatch pri"></span> Primary action / interactive</div>
+    <div class="lg"><span class="swatch box"></span> Text / control placeholder</div>
+    <div class="lg"><span class="swatch img"></span> Image / scanned page</div>
+    <div class="lg"><span class="swatch note"></span> Numbered annotation → note below screen</div>
+  </section>
+
+  <section class="flow" aria-label="Happy path">
+    <div class="sec-h" style="margin-top:0">
+      <span class="sec-n">FLOW</span><h3>Happy path — first scan to synced document</h3>
+    </div>
+    <div class="flowrow">
+      <div class="step"><b>1</b>Sign up</div><span class="arrow">→</span>
+      <div class="step"><b>2</b>Link drive</div><span class="arrow">→</span>
+      <div class="step"><b>3</b>Home · tap Scan</div><span class="arrow">→</span>
+      <div class="step"><b>4</b>Capture pages</div><span class="arrow">→</span>
+      <div class="step"><b>5</b>Edit · reorder · erase</div><span class="arrow">→</span>
+      <div class="step"><b>6</b>Name + folder</div><span class="arrow">→</span>
+      <div class="step"><b>7</b>Auto-sync</div><span class="arrow">→</span>
+      <div class="step"><b>8</b>Translate</div>
+    </div>
+  </section>
+
+  <!-- ============ SECTION A ============ -->
+  <div class="sec-h"><span class="sec-n">A</span><h3>Onboarding &amp; auth</h3><span>PRD §5.1</span></div>
+  <div class="grid">
+
+    <!-- 1. Sign up -->
+    <div class="screen">
+      <div class="phone"><div class="glass"><div class="notch"></div>
+        <div class="stat"><span>9:41</span><span>▮▮▮ ▪</span></div>
+        <div class="body center">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:4px">
+            <div class="icon r" style="width:44px;height:44px;background:var(--accent)"></div>
+            <div class="bar m" style="height:12px;align-self:center"></div>
+          </div>
+          <div class="seg"><div class="on">Phone</div><div>Email</div></div>
+          <div class="field">+1  ·  phone number</div>
+          <div class="btn pri">Send code</div>
+          <div style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:10px"><div class="bar l" style="height:1px"></div>or<div class="bar l" style="height:1px"></div></div>
+          <div class="btn gho">Continue with email</div>
+          <div class="bar xs" style="align-self:center;margin-top:2px"></div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <p class="cn">SCREEN 01</p><h4>Sign up · phone or email</h4>
+        <ul class="notes">
+          <li><span class="m">1</span>Segmented toggle: <b>phone (OTP)</b> or <b>email</b> — FR-1.1.</li>
+          <li><span class="m">2</span>Single primary CTA sends the OTP / magic link — FR-1.2.</li>
+          <li><span class="m">3</span>No password wall on first run; recovery lives in settings — FR-1.3.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 2. Link drive -->
+    <div class="screen">
+      <div class="phone"><div class="glass"><div class="notch"></div>
+        <div class="stat"><span>9:41</span><span>▮▮▮ ▪</span></div>
+        <div class="body">
+          <div class="appbar"><div class="bar xs"></div></div>
+          <div class="img" style="height:96px"></div>
+          <div class="barwrap"><div class="bar m" style="height:13px"></div><div class="bar l"></div><div class="bar l"></div><div class="bar s"></div></div>
+          <div style="flex:1"></div>
+          <div class="list">
+            <div class="row"><div class="icon"></div><div class="txt"><div class="bar m"></div></div><span class="pill acc">Link</span></div>
+            <div class="row"><div class="icon"></div><div class="txt"><div class="bar s"></div></div><span class="pill">Link</span></div>
+            <div class="row"><div class="icon"></div><div class="txt"><div class="bar s"></div></div><span class="pill">Link</span></div>
+          </div>
+          <div class="btn pri">Continue</div>
+          <div class="bar xs" style="align-self:center"></div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <p class="cn">SCREEN 02</p><h4>Link a cloud drive</h4>
+        <ul class="notes">
+          <li><span class="m">1</span>OAuth link to Google Drive (launch), Dropbox, OneDrive — FR-1.5 / FR-7.1.</li>
+          <li><span class="m">2</span>Skippable — the "Continue" text link lets users defer and scan locally first.</li>
+          <li><span class="m">3</span>Camera permission is requested on the first Scan tap, not here.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SECTION B ============ -->
+  <div class="sec-h"><span class="sec-n">B</span><h3>Home &amp; capture</h3><span>PRD §5.2 – §5.3</span></div>
+  <div class="grid">
+
+    <!-- 3. Home -->
+    <div class="screen">
+      <div class="phone"><div class="glass"><div class="notch"></div>
+        <div class="stat"><span>9:41</span><span>▮▮▮ ▪</span></div>
+        <div class="body">
+          <div class="appbar"><div class="ttl">ScanPro</div><div class="sp"><div class="icon"></div><div class="icon r"></div></div></div>
+          <div class="field"><span>Search documents &amp; text</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+            <div class="bar xs"></div><span class="pill ok">All synced</span>
+          </div>
+          <div class="list">
+            <div class="row"><div class="img" style="width:34px;height:44px"></div><div class="txt"><div class="bar m"></div><div class="bar xs"></div></div><span class="pill ok">✓</span></div>
+            <div class="row"><div class="img" style="width:34px;height:44px"></div><div class="txt"><div class="bar s"></div><div class="bar xs"></div></div><span class="pill warn">⟳</span></div>
+            <div class="row"><div class="img" style="width:34px;height:44px"></div><div class="txt"><div class="bar m"></div><div class="bar xs"></div></div><span class="pill ok">✓</span></div>
+          </div>
+        </div>
+        <div class="fab">＋</div>
+        <div class="tabbar">
+          <div class="on"><div class="ti2"></div><span class="tl">Home</span></div>
+          <div><div class="ti2"></div><span class="tl">Folders</span></div>
+          <div><div class="ti2"></div><span class="tl">Search</span></div>
+          <div><div class="ti2"></div><span class="tl">Account</span></div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <p class="cn">SCREEN 03</p><h4>Home</h4>
+        <ul class="notes">
+          <li><span class="m">1</span>One-tap <b>Scan</b> FAB — the primary CTA, reachable everywhere — FR-2.1.</li>
+          <li><span class="m">2</span>Recent documents with per-item sync state (✓ / ⟳ / ✕) — FR-2.2 / FR-2.4.</li>
+          <li><span class="m">3</span>Tab bar to Folders, Search, Account — FR-2.3.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 4. Capture -->
+    <div class="screen">
+      <div class="phone"><div class="glass"><div class="notch"></div>
+        <div class="body pad0">
+          <div class="cam">
+            <div class="cam-top"><span>Auto · Color</span><span>Flash ⚡</span></div>
+            <div class="doc-frame">
+              <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+            </div>
+            <div class="cam-bot">
+              <div class="cam-mini">Import</div>
+              <div class="shutter"></div>
+              <div class="cam-thumb"></div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <p class="cn">SCREEN 04</p><h4>Camera capture</h4>
+        <ul class="notes">
+          <li><span class="m">1</span>Live edge detection frame + auto perspective correction — FR-3.2.</li>
+          <li><span class="m">2</span>Multi-page: shutter keeps adding pages, badge shows running count (<b>no limit</b>) — FR-3.1 / FR-3.4.</li>
+          <li><span class="m">3</span>Import from gallery/files — also creates a <b>PDF from device photos</b>; filter mode selector (Auto / B&amp;W / Color) — FR-3.6 / FR-3.9 / FR-3.3.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SECTION C ============ -->
+  <div class="sec-h"><span class="sec-n">C</span><h3>Page editing</h3><span>PRD §5.4 — the edit requests</span></div>
+  <div class="grid">
+
+    <!-- 5. Editor -->
+    <div class="screen">
+      <div class="phone"><div class="glass"><div class="notch"></div>
+        <div class="stat"><span>9:41</span><span>▮▮▮ ▪</span></div>
+        <div class="body">
+          <div class="appbar"><div class="icon"></div><div class="ttl" style="font-size:13px">Edit · 5 pages</div><div class="sp"><span class="pill acc">Undo</span></div></div>
+          <div class="canvas"></div>
+          <div class="thumbstrip">
+            <div class="tn"><span class="n">1</span></div>
+            <div class="tn sel"><span class="n">2</span></div>
+            <div class="tn"><span class="n">3</span></div>
+            <div class="tn"><span class="n">4</span></div>
+            <div class="tn add">＋</div>
+          </div>
+          <div class="toolbar">
+            <div class="tool"><span class="ic"></span>Crop</div>
+            <div class="tool"><span class="ic"></span>Rotate</div>
+            <div class="tool"><span class="ic"></span>Filter</div>
+            <div class="tool"><span class="ic"></span>Resize</div>
+            <div class="tool on"><span class="ic"></span>Erase</div>
+            <div class="tool"><span class="ic"></span>Insert</div>
+            <div class="tool"><span class="ic"></span>Reorder</div>
+            <div class="tool"><span class="ic"></span>Delete</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <p class="cn">SCREEN 05</p><h4>Page editor · thumbnail strip</h4>
+        <ul class="notes">
+          <li><span class="m">1</span>Drag thumbnails to <b>rearrange</b>; long-press to <b>remove</b> a page — FR-E.1 / FR-E.2.</li>
+          <li><span class="m">2</span><b>Add</b> a page inline via the "＋" tile (camera or import) — FR-E.3.</li>
+          <li><span class="m">3</span>Per-page tools: crop, rotate, filter, <b>resize</b>, erase, <b>insert image</b>, reorder, delete — with undo/redo — FR-E.4 / FR-E.9 / FR-E.10 / FR-E.7.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 6. Erase -->
+    <div class="screen">
+      <div class="phone"><div class="glass"><div class="notch"></div>
+        <div class="stat"><span>9:41</span><span>▮▮▮ ▪</span></div>
+        <div class="body">
+          <div class="appbar"><div class="icon"></div><div class="ttl" style="font-size:13px">Erase</div><div class="sp"><span class="pill acc">Apply</span></div></div>
+          <div class="canvas">
+            <span class="wmark">SAMPLE</span>
+            <span class="erase"></span>
+            <span class="brush"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:2px">
+            <span class="pill">Brush</span>
+            <div class="bar l" style="height:4px;background:var(--line-2)"></div>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">size</span>
+          </div>
+          <div class="seg"><div class="on">Brush</div><div>Box select</div><div>Auto</div></div>
+          <div style="display:flex;gap:8px"><div class="btn gho" style="flex:1">Undo</div><div class="btn pri" style="flex:1">Done</div></div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <p class="cn">SCREEN 06</p><h4>Erase / clean-up tool</h4>
+        <ul class="notes">
+          <li><span class="m">1</span>Brush or box-select over a <b>watermark, stray mark, or shadow</b>; region fills from surrounding background — FR-E.5.</li>
+          <li><span class="m">2</span>"Auto" removes shadows / finger edges in one tap — FR-E.6.</li>
+          <li><span class="m">3</span>Non-destructive — original is retained; fully undoable — FR-E.7 / FR-E.8. (See PRD §11.8 on scope.)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 7. Save sheet -->
+    <div class="screen">
+      <div class="phone"><div class="glass"><div class="notch"></div>
+        <div class="stat"><span>9:41</span><span>▮▮▮ ▪</span></div>
+        <div class="body">
+          <div class="appbar"><div class="ttl" style="font-size:13px">Edit · 5 pages</div></div>
+          <div class="canvas"></div>
+          <div class="thumbstrip"><div class="tn"><span class="n">1</span></div><div class="tn"><span class="n">2</span></div><div class="tn"><span class="n">3</span></div></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="grabber"></div>
+          <div class="bar s" style="height:12px"></div>
+          <div class="field">Document name</div>
+          <div class="bar xs"></div>
+          <div class="row" style="background:var(--card)"><div class="folder-ic icon"></div><div class="txt"><div class="bar m"></div></div><span class="pill">Change</span></div>
+          <div class="seg"><div class="on">PDF</div><div>Images</div></div>
+          <div class="seg"><div>High</div><div class="on">Balanced</div><div>Small</div></div>
+          <div class="btn pri">Save &amp; sync</div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <p class="cn">SCREEN 07</p><h4>Save · name &amp; folder</h4>
+        <ul class="notes">
+          <li><span class="m">1</span>Name the document, pick destination <b>folder</b> — FR-4.1 / FR-4.2.</li>
+          <li><span class="m">2</span>Choose export format (PDF / images) and <b>file size</b> — compression: High / Balanced / Small, revertible to original — FR-3.7 / FR-4.7.</li>
+          <li><span class="m">3</span>"Save &amp; sync" queues auto-upload to the linked drive — FR-7.2.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SECTION D ============ -->
+  <div class="sec-h"><span class="sec-n">D</span><h3>Organize &amp; document</h3><span>PRD §5.5 – §5.6 · §5.8</span></div>
+  <div class="grid">
+
+    <!-- 8. Folders -->
+    <div class="screen">
+      <div class="phone"><div class="glass"><div class="notch"></div>
+        <div class="stat"><span>9:41</span><span>▮▮▮ ▪</span></div>
+        <div class="body">
+          <div class="appbar"><div class="ttl">Folders</div><div class="sp"><span class="pill acc">＋ New</span></div></div>
+          <div class="foldergrid">
+            <div class="folder"><div class="ft"></div><div class="bar m"></div><div class="bar xs"></div></div>
+            <div class="folder"><div class="ft"></div><div class="bar s"></div><div class="bar xs"></div></div>
+            <div class="folder"><div class="ft"></div><div class="bar m"></div><div class="bar xs"></div></div>
+            <div class="folder"><div class="ft"></div><div class="bar s"></div><div class="bar xs"></div></div>
+            <div class="folder"><div class="ft"></div><div class="bar m"></div><div class="bar xs"></div></div>
+            <div class="folder"><div class="ft"></div><div class="bar xs"></div><div class="bar xs"></div></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div><div class="ti2"></div><span class="tl">Home</span></div>
+          <div class="on"><div class="ti2"></div><span class="tl">Folders</span></div>
+          <div><div class="ti2"></div><span class="tl">Search</span></div>
+          <div><div class="ti2"></div><span class="tl">Account</span></div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <p class="cn">SCREEN 08</p><h4>Folders</h4>
+        <ul class="notes">
+          <li><span class="m">1</span>Create, rename, delete folders; item count per folder — FR-5.1.</li>
+          <li><span class="m">2</span>Documents move between folders via drag or the doc menu — FR-5.3.</li>
+          <li><span class="m">3</span>Structure can mirror the drive's folder tree — FR-5.4. (Nested folders: v1 vs v1.1 open — PRD §11.7.)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 9. Document detail -->
+    <div class="screen">
+      <div class="phone"><div class="glass"><div class="notch"></div>
+        <div class="stat"><span>9:41</span><span>▮▮▮ ▪</span></div>
+        <div class="body">
+          <div class="appbar"><div class="icon"></div><div class="ttl" style="font-size:13px">Invoice_July</div><div class="sp"><div class="icon"></div></div></div>
+          <div style="display:flex;gap:6px;align-items:center"><span class="pill ok">✓ Synced · Drive</span><span class="pill">5 pages · PDF</span></div>
+          <div class="img" style="flex:1"></div>
+          <div style="display:flex;gap:8px">
+            <div class="btn gho" style="flex:1">Share</div>
+            <div class="btn gho" style="flex:1">Edit</div>
+            <div class="btn pri" style="flex:1">Translate</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <p class="cn">SCREEN 09</p><h4>Document detail</h4>
+        <ul class="notes">
+          <li><span class="m">1</span>Metadata: page count, size, format, sync state — FR-4.4 / FR-7.4.</li>
+          <li><span class="m">2</span>Share/export as PDF or image; re-open editor — FR-4.5.</li>
+          <li><span class="m">3</span>Entry point into Translate — FR-6.1.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 10. Translate -->
+    <div class="screen">
+      <div class="phone"><div class="glass"><div class="notch"></div>
+        <div class="stat"><span>9:41</span><span>▮▮▮ ▪</span></div>
+        <div class="body">
+          <div class="appbar"><div class="icon"></div><div class="ttl" style="font-size:13px">Translate</div></div>
+          <div class="lang">
+            <div class="box"><span>Auto-detect</span><span>▾</span></div>
+            <div class="swap">⇄</div>
+            <div class="box"><span>Spanish</span><span>▾</span></div>
+          </div>
+          <div class="seg"><div class="on">Side by side</div><div>Translated</div></div>
+          <div style="display:flex;gap:8px;flex:1">
+            <div style="flex:1;border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px"><div class="bar l"></div><div class="bar l"></div><div class="bar m"></div><div class="bar l"></div><div class="bar s"></div></div>
+            <div style="flex:1;border:1px solid var(--accent);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px;background:var(--accent-soft)"><div class="bar l"></div><div class="bar m"></div><div class="bar l"></div><div class="bar l"></div><div class="bar xs"></div></div>
+          </div>
+          <div style="display:flex;gap:8px"><div class="btn gho" style="flex:1">Copy</div><div class="btn pri" style="flex:1">Save as doc</div></div>
+        </div>
+      </div></div>
+      <div class="caption">
+        <p class="cn">SCREEN 10</p><h4>Translate</h4>
+        <ul class="notes">
+          <li><span class="m">1</span>OCR → translate; auto-detect source, pick target language — FR-6.1 / FR-6.2 / FR-6.5.</li>
+          <li><span class="m">2</span>Side-by-side original vs. translated, or toggle — FR-6.3.</li>
+          <li><span class="m">3</span>Copy or save translation as a new document — FR-6.4. Free tier = on-device; high-accuracy cloud = paid (PRD §11.1).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <p style="margin:0 0 6px">Wireframes are intentionally low-fidelity — they lock down layout, hierarchy, and flow before visual design. Every screen annotation references a functional requirement in <code>PRD.md</code>. Not yet shown (deferred / secondary): search results, trash &amp; restore, account/settings, offline sync queue, and per-drive picker — all specified in the PRD but out of the core happy path.</p>
+    <p style="margin:0">Next step options: high-fidelity visual design of these screens, a clickable prototype flow, or the deferred secondary screens.</p>
+  </footer>
+
+</div>
+</div>

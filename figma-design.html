@@ -1,0 +1,574 @@
+<style>
+  :root{
+    --bg:#f5f6f8; --surface:#ffffff; --surface-2:#f0f2f4; --surface-3:#e9ecef;
+    --ink:#191c20; --ink-2:#5a616a; --ink-3:#8a919b;
+    --line:#e6e8ec; --line-2:#d6dae0;
+    --accent:#4a58c4; --accent-weak:#edeefb; --on-accent:#ffffff;
+    --ok:#1e8e5a; --ok-weak:#e4f4ec; --warn:#b7791f; --warn-weak:#f8efdc;
+    --shadow:0 1px 2px rgba(20,23,28,.06),0 8px 24px rgba(20,23,28,.06);
+    --shadow-fab:0 6px 18px rgba(74,88,196,.34);
+    --r:14px; --r-sm:10px; --r-xs:8px;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0d0f12; --surface:#181a1e; --surface-2:#20242a; --surface-3:#282d34;
+      --ink:#eaecef; --ink-2:#a7aeb7; --ink-3:#6f7680;
+      --line:#262a30; --line-2:#343a42;
+      --accent:#8b93 f0; --accent:#8b93f0; --accent-weak:#242747; --on-accent:#0d0f12;
+      --ok:#4bbd85; --ok-weak:#16281f; --warn:#e0a94a; --warn-weak:#2a2313;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.4);
+      --shadow-fab:0 6px 20px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#f5f6f8;--surface:#fff;--surface-2:#f0f2f4;--surface-3:#e9ecef;--ink:#191c20;--ink-2:#5a616a;--ink-3:#8a919b;
+    --line:#e6e8ec;--line-2:#d6dae0;--accent:#4a58c4;--accent-weak:#edeefb;--on-accent:#fff;--ok:#1e8e5a;--ok-weak:#e4f4ec;--warn:#b7791f;--warn-weak:#f8efdc;
+    --shadow:0 1px 2px rgba(20,23,28,.06),0 8px 24px rgba(20,23,28,.06);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d0f12;--surface:#181a1e;--surface-2:#20242a;--surface-3:#282d34;--ink:#eaecef;--ink-2:#a7aeb7;--ink-3:#6f7680;
+    --line:#262a30;--line-2:#343a42;--accent:#8b93f0;--accent-weak:#242747;--on-accent:#0d0f12;--ok:#4bbd85;--ok-weak:#16281f;--warn:#e0a94a;--warn-weak:#2a2313;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box}
+  .d{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;padding:44px 24px 80px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1200px;margin:0 auto}
+  .i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;display:block;flex:none}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+
+  header.mast{margin-bottom:30px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin:0 0 10px}
+  h1{font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0 0 8px}
+  .sub{color:var(--ink-2);font-size:15px;max-width:64ch;margin:0}
+
+  .panels{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;margin:26px 0 8px}
+  @media(max-width:820px){.panels{grid-template-columns:1fr}}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px}
+  .card h2{font-size:13px;font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:8px}
+  .card h2 .i{width:16px;height:16px;color:var(--accent)}
+  ol.steps{margin:0;padding-left:0;list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:10px}
+  ol.steps li{counter-increment:s;position:relative;padding-left:30px;font-size:13px;color:var(--ink-2);line-height:1.5}
+  ol.steps li::before{content:counter(s);position:absolute;left:0;top:0;width:20px;height:20px;border-radius:50%;background:var(--accent-weak);color:var(--accent);font-family:var(--mono);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  ol.steps b{color:var(--ink)}
+  code.k{font-family:var(--mono);font-size:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+
+  .tokens{display:flex;flex-direction:column;gap:14px}
+  .swrow{display:flex;gap:8px;flex-wrap:wrap}
+  .sw{display:flex;flex-direction:column;gap:5px;font-family:var(--mono);font-size:9.5px;color:var(--ink-3)}
+  .chip{width:52px;height:34px;border-radius:8px;border:1px solid var(--line)}
+  .type-scale{display:flex;flex-direction:column;gap:3px}
+  .type-scale span{color:var(--ink);line-height:1.2}
+
+  .sec{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--line);padding-bottom:10px;margin:46px 0 28px}
+  .sec .n{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:700}
+  .sec h3{font-size:17px;font-weight:600;margin:0}
+  .sec .ref{margin-left:auto;color:var(--ink-3);font-size:12px;font-family:var(--mono)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:38px 28px}
+  .screen{display:flex;flex-direction:column}
+
+  .device{align-self:center;width:274px;background:var(--surface);border:1px solid var(--line-2);border-radius:36px;padding:9px;box-shadow:var(--shadow)}
+  .scr{position:relative;height:540px;border-radius:28px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column}
+  .status{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 20px 0 22px;font-size:12px;font-weight:600;color:var(--ink);flex:none}
+  .status .r{display:flex;align-items:center;gap:5px}
+  .status .r .i{width:15px;height:15px;stroke-width:2}
+
+  .content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+  .pad{padding:6px 16px 14px}
+  .col{display:flex;flex-direction:column}
+
+  .topbar{display:flex;align-items:center;gap:10px;padding:4px 16px 10px;flex:none}
+  .topbar .title{font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .topbar .sp{margin-left:auto;display:flex;align-items:center;gap:14px;color:var(--ink-2)}
+  .iconbtn{color:var(--ink-2);display:flex;align-items:center}
+
+  .logo{width:52px;height:52px;border-radius:15px;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center}
+  .logo .i{width:28px;height:28px;stroke-width:1.9}
+
+  .h-lg{font-size:21px;font-weight:600;letter-spacing:-.02em;margin:0}
+  .h-md{font-size:16px;font-weight:600;margin:0}
+  .muted{color:var(--ink-2);font-size:13px;margin:0}
+  .muted-sm{color:var(--ink-3);font-size:11.5px;margin:0}
+
+  .seg{display:flex;background:var(--surface-2);border-radius:10px;padding:3px;gap:3px}
+  .seg button{flex:1;border:0;background:transparent;color:var(--ink-2);font:inherit;font-size:12.5px;font-weight:500;padding:7px 0;border-radius:8px;cursor:pointer}
+  .seg button.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  :root[data-theme="dark"] .seg button.on,@media(prefers-color-scheme:dark){}
+
+  .field{height:46px;border:1px solid var(--line-2);border-radius:11px;background:var(--surface);display:flex;align-items:center;gap:10px;padding:0 13px;color:var(--ink);font-size:14px}
+  .field .i{color:var(--ink-3);width:18px;height:18px}
+  .field .ph{color:var(--ink-3)}
+  .field .pre{color:var(--ink-2);font-weight:600;padding-right:10px;border-right:1px solid var(--line);margin-right:2px}
+
+  .btn{height:46px;border-radius:12px;border:0;font:inherit;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;width:100%}
+  .btn.pri{background:var(--accent);color:var(--on-accent)}
+  .btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line-2)}
+  .btn.sm{height:40px;font-size:13px;border-radius:11px}
+  .btn .i{width:18px;height:18px}
+
+  .divider{display:flex;align-items:center;gap:12px;color:var(--ink-3);font-size:12px}
+  .divider::before,.divider::after{content:"";height:1px;background:var(--line);flex:1}
+
+  .legalese{font-size:11px;color:var(--ink-3);text-align:center;line-height:1.5}
+  .legalese b{color:var(--ink-2);font-weight:600}
+
+  .conn{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:11px 13px;background:var(--surface)}
+  .conn .badge{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none;color:#fff}
+  .conn .badge .i{width:20px;height:20px;stroke-width:1.9}
+  .conn .txt{flex:1}
+  .conn .nm{font-size:14px;font-weight:600}
+  .conn .st{font-size:11.5px;color:var(--ink-3)}
+  .tag{font-size:12px;font-weight:600;padding:6px 13px;border-radius:9px}
+  .tag.link{background:var(--accent);color:var(--on-accent)}
+  .tag.linked{background:var(--ok-weak);color:var(--ok);display:flex;align-items:center;gap:5px}
+  .tag.linked .i{width:14px;height:14px;stroke-width:2.4}
+  .tag.out{background:var(--surface-2);color:var(--ink-2)}
+
+  .doclist{display:flex;flex-direction:column;gap:2px}
+  .doc{display:flex;align-items:center;gap:12px;padding:10px 6px;border-bottom:1px solid var(--line)}
+  .doc:last-child{border-bottom:0}
+  .thumb{width:40px;height:52px;border-radius:6px;background:var(--surface);border:1px solid var(--line-2);overflow:hidden;flex:none;box-shadow:0 1px 2px rgba(0,0,0,.05);padding:5px 5px 0;display:flex;flex-direction:column;gap:2.5px}
+  .thumb i{display:block;height:2px;border-radius:2px;background:var(--surface-3)}
+  .thumb i.h{height:4px;width:70%;background:var(--line-2);margin-bottom:1px}
+  .thumb i.s{width:60%}
+  .doc .meta{flex:1;min-width:0}
+  .doc .dn{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .doc .dm{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+  .sync{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+  .sync.ok{background:var(--ok-weak);color:var(--ok)}
+  .sync.pend{background:var(--warn-weak);color:var(--warn)}
+  .sync .i{width:13px;height:13px;stroke-width:2.4}
+
+  .sectlabel{display:flex;align-items:center;justify-content:space-between;padding:6px 6px 8px}
+  .sectlabel .l{font-size:12px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em}
+  .pill{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:5px}
+  .pill.ok{background:var(--ok-weak);color:var(--ok)}
+  .pill.ok .i{width:12px;height:12px;stroke-width:2.6}
+  .pill.info{background:var(--surface-2);color:var(--ink-2)}
+  .pill.accent{background:var(--accent-weak);color:var(--accent)}
+
+  .fab{position:absolute;left:50%;transform:translateX(-50%);bottom:70px;width:60px;height:60px;border-radius:20px;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-fab);z-index:6}
+  .fab .i{width:28px;height:28px;stroke-width:1.9}
+  .tabs{height:58px;border-top:1px solid var(--line);display:flex;background:var(--surface);flex:none}
+  .tabs a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--ink-3);text-decoration:none}
+  .tabs a .i{width:22px;height:22px}
+  .tabs a span{font-size:10px;font-weight:500}
+  .tabs a.on{color:var(--accent)}
+  .tabs a.on span{font-weight:600}
+
+  /* camera */
+  .cam{flex:1;background:#0b0d10;position:relative;display:flex;align-items:center;justify-content:center}
+  .cam .ctop{position:absolute;top:14px;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:0 18px;color:#e7e9ec}
+  .cam .ctop .chipd{font-size:11px;font-weight:600;background:rgba(255,255,255,.14);padding:5px 11px;border-radius:999px;backdrop-filter:blur(4px)}
+  .cam .ctop .i{width:20px;height:20px;color:#e7e9ec}
+  .frame{width:66%;height:56%;border-radius:8px;position:relative;background:rgba(74,88,196,.10)}
+  .frame .cn{position:absolute;width:22px;height:22px;border:3px solid var(--accent)}
+  .frame .tl{top:-2px;left:-2px;border-right:0;border-bottom:0;border-radius:6px 0 0 0}
+  .frame .tr{top:-2px;right:-2px;border-left:0;border-bottom:0;border-radius:0 6px 0 0}
+  .frame .bl{bottom:-2px;left:-2px;border-right:0;border-top:0;border-radius:0 0 0 6px}
+  .frame .br{bottom:-2px;right:-2px;border-left:0;border-top:0;border-radius:0 0 6px 0}
+  .cam .hint{position:absolute;top:calc(22% - 34px);left:0;right:0;text-align:center;color:#c7cbd2;font-size:11px}
+  .cam .cbot{position:absolute;bottom:20px;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:0 30px}
+  .cam .imp{width:44px;height:44px;border-radius:11px;border:1px solid rgba(255,255,255,.24);color:#e7e9ec;display:flex;align-items:center;justify-content:center}
+  .cam .imp .i{width:20px;height:20px}
+  .cam .shutter{width:64px;height:64px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.35)}
+  .cam .stack{width:44px;height:44px;border-radius:10px;position:relative;background:#20242a;border:1px solid rgba(255,255,255,.24);overflow:hidden;padding:5px 5px 0;display:flex;flex-direction:column;gap:2px}
+  .cam .stack i{height:2px;background:#454b55;border-radius:2px}
+  .cam .stack .cnt{position:absolute;top:-7px;right:-7px;min-width:19px;height:19px;padding:0 4px;border-radius:999px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #0b0d10}
+
+  /* editor */
+  .pageview{flex:1;margin:4px 0 10px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+  .paper{width:64%;height:88%;background:#fff;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.14);padding:14px 14px 0;display:flex;flex-direction:column;gap:5px}
+  .paper i{height:3.5px;border-radius:3px;background:#e2e5e9;display:block}
+  .paper i.h{height:6px;width:56%;background:#c7ccd3;margin-bottom:5px}
+  .paper i.s{width:40%}
+  .paper i.m{width:78%}
+  .wm{position:absolute;font-family:var(--mono);font-weight:700;font-size:20px;letter-spacing:.14em;color:rgba(120,128,140,.34);transform:rotate(-22deg)}
+  .erasebox{position:absolute;border:1.6px dashed var(--accent);background:rgba(74,88,196,.14);border-radius:6px}
+  .brushdot{position:absolute;width:24px;height:24px;border-radius:50%;border:2px solid var(--accent);background:rgba(74,88,196,.22)}
+
+  .strip{display:flex;gap:8px;align-items:center;padding:2px 0 10px;overflow:hidden}
+  .pg{width:42px;height:56px;border-radius:6px;background:#fff;border:1px solid var(--line-2);position:relative;flex:none;box-shadow:0 1px 2px rgba(0,0,0,.06);padding:5px 5px 0;display:flex;flex-direction:column;gap:2.5px;overflow:hidden}
+  :root[data-theme="dark"] .pg,@media(prefers-color-scheme:dark){}
+  .pg i{height:2px;background:#dfe2e6;border-radius:2px}
+  .pg i.h{height:3px;width:66%;background:#c7ccd3;margin-bottom:1px}
+  .pg.sel{border:2px solid var(--accent);box-shadow:0 0 0 3px var(--accent-weak)}
+  .pg .num{position:absolute;bottom:2px;right:3px;font-family:var(--mono);font-size:8px;color:var(--ink-3)}
+  .pg.add{background:var(--surface-2);border:1.5px dashed var(--line-2);display:flex;align-items:center;justify-content:center;color:var(--ink-3);padding:0}
+  .pg.add .i{width:20px;height:20px}
+  .pg.drag{box-shadow:0 8px 18px rgba(0,0,0,.22);transform:translateY(-4px) rotate(-3deg)}
+
+  .toolbar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 4px;border-top:1px solid var(--line);padding-top:12px}
+  .tool{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:9.5px;color:var(--ink-2);background:none;border:0;cursor:pointer;font-family:inherit}
+  .tool .ic{width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:var(--ink-2)}
+  .tool .ic .i{width:21px;height:21px}
+  .tool.on{color:var(--accent)}
+  .tool.on .ic{color:var(--accent)}
+
+  .slider{height:4px;background:var(--surface-3);border-radius:999px;position:relative}
+  .slider::after{content:"";position:absolute;left:44%;top:50%;width:16px;height:16px;border-radius:50%;background:var(--accent);transform:translate(-50%,-50%);box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .slider .fill{position:absolute;left:0;top:0;bottom:0;width:44%;background:var(--accent);border-radius:999px}
+
+  .scrim{position:absolute;inset:0;background:rgba(10,12,16,.42);z-index:7}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:20px 20px 0 0;padding:12px 18px 20px;z-index:8;box-shadow:0 -8px 30px rgba(0,0,0,.2);display:flex;flex-direction:column;gap:13px}
+  .grab{width:38px;height:4px;background:var(--line-2);border-radius:999px;align-self:center}
+  .selrow{display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:11px;padding:11px 13px}
+  .selrow .fi{width:34px;height:34px;border-radius:9px;background:var(--accent-weak);color:var(--accent);display:flex;align-items:center;justify-content:center;flex:none}
+  .selrow .fi .i{width:18px;height:18px}
+  .selrow .t{flex:1}
+  .selrow .t .a{font-size:11px;color:var(--ink-3)}
+  .selrow .t .b{font-size:14px;font-weight:600}
+  .toggle{width:42px;height:25px;border-radius:999px;background:var(--accent);position:relative;flex:none}
+  .toggle::after{content:"";position:absolute;top:2.5px;right:2.5px;width:20px;height:20px;border-radius:50%;background:#fff}
+
+  .foldergrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .fld{border:1px solid var(--line);border-radius:13px;padding:14px;display:flex;flex-direction:column;gap:9px;background:var(--surface)}
+  .fld .fi{width:38px;height:38px;border-radius:11px;background:var(--accent-weak);color:var(--accent);display:flex;align-items:center;justify-content:center}
+  .fld .fi .i{width:21px;height:21px}
+  .fld .nm{font-size:14px;font-weight:600}
+  .fld .ct{font-size:11.5px;color:var(--ink-3)}
+
+  .chips{display:flex;gap:7px;padding:2px 0 10px;flex-wrap:wrap}
+  .bigpage{flex:1;border-radius:12px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+  .bigpage .paper{width:70%;height:90%}
+  .actionrow{display:flex;gap:9px}
+  .actionrow .btn{flex:1}
+
+  .lang{display:flex;align-items:center;gap:9px}
+  .lang .sel{flex:1;border:1px solid var(--line-2);border-radius:11px;padding:11px 13px;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600}
+  .lang .sel .i{width:17px;height:17px;color:var(--ink-3)}
+  .lang .swap{width:38px;height:38px;border-radius:11px;border:1px solid var(--line-2);color:var(--ink-2);display:flex;align-items:center;justify-content:center;flex:none}
+  .lang .swap .i{width:18px;height:18px}
+  .tpanels{flex:1;display:flex;gap:10px;min-height:0}
+  .tp{flex:1;border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;font-size:11px;overflow:hidden}
+  .tp.out{border-color:var(--accent);background:var(--accent-weak)}
+  .tp .lbl{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .tp.out .lbl{color:var(--accent)}
+  .tp p{margin:0;color:var(--ink-2);line-height:1.5;font-size:11px}
+  .tp.out p{color:var(--ink)}
+
+  .cap{margin-top:16px}
+  .cap .cn{font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.05em}
+  .cap h4{font-size:14px;font-weight:600;margin:3px 0 8px}
+  .notes{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+  .notes li{position:relative;padding-left:22px;font-size:12px;color:var(--ink-2);line-height:1.45}
+  .notes li::before{content:"";position:absolute;left:0;top:6px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .notes b{color:var(--ink);font-weight:600}
+
+  footer.foot{margin-top:54px;border-top:1px solid var(--line);padding-top:20px;color:var(--ink-2);font-size:13px}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="ic-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="ic-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+  <symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+  <symbol id="ic-scan" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></symbol>
+  <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="ic-check" viewBox="0 0 24 24"><path d="M5 12l5 5L20 6"/></symbol>
+  <symbol id="ic-sync" viewBox="0 0 24 24"><path d="M4 9a8 8 0 0 1 13.4-3.4L20 8"/><path d="M20 4v4h-4"/><path d="M20 15a8 8 0 0 1-13.4 3.4L4 16"/><path d="M4 20v-4h4"/></symbol>
+  <symbol id="ic-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="ic-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="ic-dots" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-crop" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/></symbol>
+  <symbol id="ic-rotate" viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M4 10a8 8 0 1 1 1.5 6.5"/></symbol>
+  <symbol id="ic-filter" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2.2" fill="var(--surface)"/><circle cx="15" cy="12" r="2.2" fill="var(--surface)"/><circle cx="8" cy="17" r="2.2" fill="var(--surface)"/></symbol>
+  <symbol id="ic-eraser" viewBox="0 0 24 24"><path d="M15 5l4 4-9 9H6l-3-3a1.2 1.2 0 0 1 0-1.7L13 3"/><path d="M9 18h10"/></symbol>
+  <symbol id="ic-sort" viewBox="0 0 24 24"><path d="M7 4v14M4 15l3 3 3-3"/><path d="M17 20V6M14 9l3-3 3 3"/></symbol>
+  <symbol id="ic-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></symbol>
+  <symbol id="ic-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.1 11l7.8-3.8M8.1 13l7.8 3.8"/></symbol>
+  <symbol id="ic-edit" viewBox="0 0 24 24"><path d="M4 20h4L18.5 9.5a2 2 0 0 0-3-3L5 17z"/><path d="M13.5 8.5l3 3"/></symbol>
+  <symbol id="ic-lang" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></symbol>
+  <symbol id="ic-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></symbol>
+  <symbol id="ic-photo" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 3 3-2 4 4"/></symbol>
+  <symbol id="ic-flash" viewBox="0 0 24 24"><path d="M13 3L5 13h6l-1 8 8-10h-6z"/></symbol>
+  <symbol id="ic-swap" viewBox="0 0 24 24"><path d="M4 8h13M14 5l3 3-3 3"/><path d="M20 16H7M10 13l-3 3 3 3"/></symbol>
+  <symbol id="ic-auto" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M18 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></symbol>
+  <symbol id="ic-cloud" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1 .4-8A5 5 0 0 1 17 10.4 3.6 3.6 0 0 1 17.5 18z"/></symbol>
+  <symbol id="ic-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+  <symbol id="ic-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8 4v5h7"/><path d="M8 15h8"/></symbol>
+  <symbol id="ic-resize" viewBox="0 0 24 24"><path d="M4 9V4h5"/><path d="M20 15v5h-5"/><path d="M4 4l6 6"/><path d="M20 20l-6-6"/></symbol>
+  <symbol id="ic-image-plus" viewBox="0 0 24 24"><path d="M14 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><circle cx="8.5" cy="9" r="1.4"/><path d="M4 17l4.5-4 3.5 2.5"/><path d="M18 3v6M15 6h6"/></symbol>
+</defs></svg>
+
+<div class="d">
+<h2 class="sr-only">High-fidelity minimal and neutral UI design for the ScanPro Android scanning app, ten screens, ready to import into Figma.</h2>
+<div class="wrap">
+
+  <header class="mast">
+    <p class="kicker">ScanPro · Android v1 · High-fidelity UI · minimal &amp; neutral</p>
+    <h1>Visual design — Figma-ready</h1>
+    <p class="sub">Production-fidelity screens with a real palette, type scale, icon set, and components. Import straight into Figma as editable layers using the steps below, then wire up interactions and components there.</p>
+  </header>
+
+  <div class="panels">
+    <div class="card">
+      <h2><svg class="i"><use href="#ic-scan"/></svg> Import into Figma (html.to.design)</h2>
+      <ol class="steps">
+        <li>In Figma, open <b>Plugins → Browse plugins</b> and install <b>“html.to.design”</b> (free).</li>
+        <li>Run the plugin, choose <b>Import via URL</b>, and paste this page’s published artifact URL.</li>
+        <li>The plugin imports every screen as <b>editable frames, text, and vector icons</b> — grouped and named.</li>
+        <li>In Figma, select repeated elements (tab bar, buttons, cards) and <b>Create component</b> to build your library.</li>
+        <li>Tokens below map 1:1 to <b>Figma variables/styles</b> — recreate them once and rebind. Also in <code class="k">figma-design.html</code>.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2><svg class="i"><use href="#ic-filter"/></svg> Design tokens</h2>
+      <div class="tokens">
+        <div class="swrow">
+          <div class="sw"><span class="chip" style="background:var(--accent)"></span>accent</div>
+          <div class="sw"><span class="chip" style="background:var(--accent-weak)"></span>accent-weak</div>
+          <div class="sw"><span class="chip" style="background:var(--ink)"></span>ink</div>
+          <div class="sw"><span class="chip" style="background:var(--ink-2)"></span>ink-2</div>
+          <div class="sw"><span class="chip" style="background:var(--surface-2)"></span>surface-2</div>
+          <div class="sw"><span class="chip" style="background:var(--ok)"></span>ok</div>
+          <div class="sw"><span class="chip" style="background:var(--warn)"></span>warn</div>
+        </div>
+        <div class="type-scale">
+          <span style="font-size:21px;font-weight:600;letter-spacing:-.02em">Title · 21 / 600</span>
+          <span style="font-size:17px;font-weight:600">Heading · 17 / 600</span>
+          <span style="font-size:14px;font-weight:400;color:var(--ink)">Body · 14 / 400</span>
+          <span style="font-size:12px;color:var(--ink-3)">Caption · 12 / muted</span>
+        </div>
+        <p class="muted-sm">Radius 14/10/8 · hairline borders · single restrained accent · greyscale-forward so scanned content leads.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION A -->
+  <div class="sec"><span class="n">A</span><h3>Onboarding &amp; auth</h3><span class="ref">PRD §5.1</span></div>
+  <div class="grid">
+
+    <!-- 01 Sign up -->
+    <div class="screen"><div class="device"><div class="scr">
+      <div class="status"><span>9:41</span><span class="r"><svg class="i"><use href="#ic-cloud"/></svg><span>100%</span></span></div>
+      <div class="content pad col" style="gap:14px">
+        <div style="height:6px"></div>
+        <div class="logo"><svg class="i"><use href="#ic-scan"/></svg></div>
+        <div><p class="h-lg">Create your account</p><p class="muted">Free forever. No page limits, ever.</p></div>
+        <div class="seg"><button class="on">Phone</button><button>Email</button></div>
+        <div class="field"><span class="pre">🇺🇸 +1</span><span class="ph">(555) 000-0000</span></div>
+        <button class="btn pri">Send code</button>
+        <div class="divider">or</div>
+        <button class="btn ghost"><svg class="i"><use href="#ic-mail"/></svg>Continue with email</button>
+        <div style="flex:1"></div>
+        <p class="legalese">By continuing you agree to the <b>Terms</b> and <b>Privacy Policy</b>.</p>
+      </div>
+    </div></div>
+      <div class="cap"><p class="cn">SCREEN 01</p><h4>Sign up · phone or email</h4>
+        <ul class="notes"><li>Segmented <b>phone (OTP)</b> / <b>email</b> — FR-1.1.</li><li>One primary action sends the code or magic link — FR-1.2.</li><li>“Free forever” reassurance up front (PRD §11.1 messaging).</li></ul></div>
+    </div>
+
+    <!-- 02 Link drive -->
+    <div class="screen"><div class="device"><div class="scr">
+      <div class="status"><span>9:41</span><span class="r"><svg class="i"><use href="#ic-cloud"/></svg><span>100%</span></span></div>
+      <div class="content pad col" style="gap:14px">
+        <div style="height:4px"></div>
+        <div class="logo" style="background:var(--accent-weak);color:var(--accent)"><svg class="i"><use href="#ic-sync"/></svg></div>
+        <div><p class="h-lg">Back up automatically</p><p class="muted">Scans upload to your own cloud drive. We never store your documents.</p></div>
+        <div class="col" style="gap:10px;margin-top:4px">
+          <div class="conn"><span class="badge" style="background:#1a73e8"><svg class="i"><use href="#ic-cloud"/></svg></span><div class="txt"><div class="nm">Google Drive</div><div class="st">Recommended</div></div><span class="tag link">Connect</span></div>
+          <div class="conn"><span class="badge" style="background:#0061fe"><svg class="i"><use href="#ic-cloud"/></svg></span><div class="txt"><div class="nm">Dropbox</div><div class="st">Coming in v1.1</div></div><span class="tag out">Soon</span></div>
+          <div class="conn"><span class="badge" style="background:#0364b8"><svg class="i"><use href="#ic-cloud"/></svg></span><div class="txt"><div class="nm">OneDrive</div><div class="st">Coming in v1.1</div></div><span class="tag out">Soon</span></div>
+        </div>
+        <div style="flex:1"></div>
+        <button class="btn pri">Continue</button>
+        <p class="legalese" style="color:var(--ink-2)">Skip for now</p>
+      </div>
+    </div></div>
+      <div class="cap"><p class="cn">SCREEN 02</p><h4>Link a cloud drive</h4>
+        <ul class="notes"><li>OAuth to Google Drive at launch; Dropbox/OneDrive in v1.1 — FR-1.5 / FR-7.1.</li><li>Skippable — users can scan locally first.</li><li>Privacy line: documents live in the user’s own drive (PRD §11.3).</li></ul></div>
+    </div>
+  </div>
+
+  <!-- SECTION B -->
+  <div class="sec"><span class="n">B</span><h3>Home &amp; capture</h3><span class="ref">PRD §5.2 – §5.3</span></div>
+  <div class="grid">
+
+    <!-- 03 Home -->
+    <div class="screen"><div class="device"><div class="scr">
+      <div class="status"><span>9:41</span><span class="r"><svg class="i"><use href="#ic-cloud"/></svg><span>100%</span></span></div>
+      <div class="topbar"><span class="title">ScanPro</span><span class="sp"><span class="iconbtn"><svg class="i"><use href="#ic-search"/></svg></span><span class="iconbtn"><svg class="i"><use href="#ic-user"/></svg></span></span></div>
+      <div class="content pad col" style="gap:10px">
+        <div class="field"><svg class="i"><use href="#ic-search"/></svg><span class="ph">Search documents and text</span></div>
+        <div class="sectlabel"><span class="l">Recent</span><span class="pill ok"><svg class="i"><use href="#ic-check"/></svg>All synced</span></div>
+        <div class="doclist">
+          <div class="doc"><div class="thumb"><i class="h"></i><i></i><i class="s"></i><i></i><i class="s"></i></div><div class="meta"><div class="dn">Invoice — July</div><div class="dm">5 pages · PDF · 2m ago</div></div><span class="sync ok"><svg class="i"><use href="#ic-check"/></svg></span></div>
+          <div class="doc"><div class="thumb"><i class="h"></i><i></i><i></i><i class="s"></i></div><div class="meta"><div class="dn">Lecture notes — wk 3</div><div class="dm">12 pages · PDF · uploading…</div></div><span class="sync pend"><svg class="i"><use href="#ic-sync"/></svg></span></div>
+          <div class="doc"><div class="thumb"><i class="h"></i><i class="s"></i><i></i><i></i></div><div class="meta"><div class="dn">Passport</div><div class="dm">1 page · PDF · yesterday</div></div><span class="sync ok"><svg class="i"><use href="#ic-check"/></svg></span></div>
+          <div class="doc"><div class="thumb"><i class="h"></i><i></i><i class="m"></i><i class="s"></i></div><div class="meta"><div class="dn">Rental agreement</div><div class="dm">8 pages · PDF · Mon</div></div><span class="sync ok"><svg class="i"><use href="#ic-check"/></svg></span></div>
+        </div>
+      </div>
+      <div class="fab"><svg class="i"><use href="#ic-scan"/></svg></div>
+      <div class="tabs"><a class="on"><svg class="i"><use href="#ic-home"/></svg><span>Home</span></a><a><svg class="i"><use href="#ic-folder"/></svg><span>Folders</span></a><a><svg class="i"><use href="#ic-search"/></svg><span>Search</span></a><a><svg class="i"><use href="#ic-user"/></svg><span>Account</span></a></div>
+    </div></div>
+      <div class="cap"><p class="cn">SCREEN 03</p><h4>Home</h4>
+        <ul class="notes"><li>One-tap <b>Scan</b> FAB — the primary action — FR-2.1.</li><li>Recent docs with per-item sync state — FR-2.2 / FR-2.4.</li><li>Tab bar: Home · Folders · Search · Account — FR-2.3.</li></ul></div>
+    </div>
+
+    <!-- 04 Camera -->
+    <div class="screen"><div class="device"><div class="scr">
+      <div class="cam">
+        <div class="ctop"><svg class="i"><use href="#ic-back"/></svg><span class="chipd">Auto · Color</span><svg class="i"><use href="#ic-flash"/></svg></div>
+        <div class="hint">Fit the document inside the frame</div>
+        <div class="frame"><span class="cn tl"></span><span class="cn tr"></span><span class="cn bl"></span><span class="cn br"></span></div>
+        <div class="cbot">
+          <div class="imp"><svg class="i"><use href="#ic-photo"/></svg></div>
+          <div class="shutter"></div>
+          <div class="stack"><span class="cnt">3</span><i></i><i></i><i></i></div>
+        </div>
+      </div>
+    </div></div>
+      <div class="cap"><p class="cn">SCREEN 04</p><h4>Camera capture</h4>
+        <ul class="notes"><li>Live edge detection + auto perspective correction — FR-3.2.</li><li>Multi-page: shutter keeps adding, count badge shows <b>3</b> (no limit) — FR-3.1 / FR-3.4.</li><li>Import from gallery — also the entry for <b>create PDF from photos</b> — plus flash + filter controls — FR-3.6 / FR-3.9 / FR-3.3.</li></ul></div>
+    </div>
+  </div>
+
+  <!-- SECTION C -->
+  <div class="sec"><span class="n">C</span><h3>Page editing</h3><span class="ref">PRD §5.4</span></div>
+  <div class="grid">
+
+    <!-- 05 Editor -->
+    <div class="screen"><div class="device"><div class="scr">
+      <div class="status"><span>9:41</span><span class="r"><svg class="i"><use href="#ic-cloud"/></svg><span>100%</span></span></div>
+      <div class="topbar"><span class="iconbtn"><svg class="i"><use href="#ic-back"/></svg></span><span class="title" style="font-size:15px">Edit · 5 pages</span><span class="sp"><span class="pill accent">Undo</span></span></div>
+      <div class="content pad col">
+        <div class="pageview"><div class="paper"><i class="h"></i><i></i><i class="m"></i><i></i><i class="s"></i><i></i><i class="m"></i><i class="s"></i></div></div>
+        <div class="strip">
+          <div class="pg"><i class="h"></i><i></i><i></i><span class="num">1</span></div>
+          <div class="pg sel"><i class="h"></i><i></i><i></i><span class="num">2</span></div>
+          <div class="pg drag"><i class="h"></i><i></i><i></i><span class="num">3</span></div>
+          <div class="pg"><i class="h"></i><i></i><i></i><span class="num">4</span></div>
+          <div class="pg add"><svg class="i"><use href="#ic-plus"/></svg></div>
+        </div>
+        <div class="toolbar">
+          <button class="tool"><span class="ic"><svg class="i"><use href="#ic-crop"/></svg></span>Crop</button>
+          <button class="tool"><span class="ic"><svg class="i"><use href="#ic-rotate"/></svg></span>Rotate</button>
+          <button class="tool"><span class="ic"><svg class="i"><use href="#ic-filter"/></svg></span>Filter</button>
+          <button class="tool"><span class="ic"><svg class="i"><use href="#ic-resize"/></svg></span>Resize</button>
+          <button class="tool on"><span class="ic"><svg class="i"><use href="#ic-eraser"/></svg></span>Erase</button>
+          <button class="tool"><span class="ic"><svg class="i"><use href="#ic-image-plus"/></svg></span>Insert</button>
+          <button class="tool"><span class="ic"><svg class="i"><use href="#ic-sort"/></svg></span>Reorder</button>
+          <button class="tool"><span class="ic"><svg class="i"><use href="#ic-trash"/></svg></span>Delete</button>
+        </div>
+      </div>
+    </div></div>
+      <div class="cap"><p class="cn">SCREEN 05</p><h4>Page editor · thumbnail strip</h4>
+        <ul class="notes"><li>Drag thumbnails to <b>rearrange</b> (page 3 lifted); long-press to <b>remove</b> — FR-E.1 / FR-E.2.</li><li><b>Add</b> a page inline via the “＋” tile — FR-E.3.</li><li>Tools: crop, rotate, filter, <b>resize</b>, erase, <b>insert image</b>, reorder, delete — undo/redo — FR-E.4 / FR-E.9 / FR-E.10 / FR-E.7.</li></ul></div>
+    </div>
+
+    <!-- 06 Erase -->
+    <div class="screen"><div class="device"><div class="scr">
+      <div class="status"><span>9:41</span><span class="r"><svg class="i"><use href="#ic-cloud"/></svg><span>100%</span></span></div>
+      <div class="topbar"><span class="iconbtn"><svg class="i"><use href="#ic-back"/></svg></span><span class="title" style="font-size:15px">Erase</span><span class="sp"><span class="pill accent">Apply</span></span></div>
+      <div class="content pad col" style="gap:12px">
+        <div class="pageview"><div class="paper"><i class="h"></i><i></i><i class="m"></i><i></i><i class="s"></i><i></i><i class="m"></i>
+          <span class="wm" style="top:44%;left:24%">SAMPLE</span>
+          <span class="erasebox" style="top:40%;left:20%;width:120px;height:32px"></span>
+          <span class="brushdot" style="top:52%;left:56%"></span>
+        </div></div>
+        <div style="display:flex;align-items:center;gap:10px"><span class="muted-sm" style="width:56px">Brush size</span><div class="slider" style="flex:1"><span class="fill"></span></div></div>
+        <div class="seg"><button class="on">Brush</button><button>Box select</button><button>Auto</button></div>
+        <div style="display:flex;gap:9px"><button class="btn ghost sm" style="flex:1">Undo</button><button class="btn pri sm" style="flex:1">Done</button></div>
+      </div>
+    </div></div>
+      <div class="cap"><p class="cn">SCREEN 06</p><h4>Erase / clean-up tool</h4>
+        <ul class="notes"><li>Brush or box-select over a <b>watermark, stray mark, or shadow</b>; fills from surrounding background — FR-E.5.</li><li>“Auto” clears shadows / finger edges in one tap — FR-E.6.</li><li>Non-destructive &amp; undoable — FR-E.7 / FR-E.8 (scope note PRD §11.8).</li></ul></div>
+    </div>
+
+    <!-- 07 Save sheet -->
+    <div class="screen"><div class="device"><div class="scr">
+      <div class="status"><span>9:41</span><span class="r"><svg class="i"><use href="#ic-cloud"/></svg><span>100%</span></span></div>
+      <div class="topbar"><span class="iconbtn"><svg class="i"><use href="#ic-back"/></svg></span><span class="title" style="font-size:15px">Edit · 5 pages</span></div>
+      <div class="content pad col"><div class="pageview"><div class="paper"><i class="h"></i><i></i><i class="m"></i><i></i><i class="s"></i></div></div></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <p class="h-md">Save document</p>
+        <div class="field"><span style="color:var(--ink)">Invoice — July</span></div>
+        <div class="selrow"><span class="fi"><svg class="i"><use href="#ic-folder"/></svg></span><div class="t"><div class="a">Folder</div><div class="b">Receipts</div></div><span class="tag out">Change</span></div>
+        <div class="seg"><button class="on">PDF</button><button>Images</button></div>
+        <div style="display:flex;align-items:center;gap:10px"><span class="muted-sm" style="width:58px;flex:none">File size</span><div class="seg" style="flex:1"><button>High</button><button class="on">Balanced</button><button>Small</button></div></div>
+        <div class="selrow"><span class="fi" style="background:#1a73e8;color:#fff"><svg class="i"><use href="#ic-cloud"/></svg></span><div class="t"><div class="a">Backup</div><div class="b">Upload to Google Drive</div></div><span class="toggle"></span></div>
+        <button class="btn pri"><svg class="i"><use href="#ic-save"/></svg>Save and sync</button>
+      </div>
+    </div></div>
+      <div class="cap"><p class="cn">SCREEN 07</p><h4>Save · name &amp; folder</h4>
+        <ul class="notes"><li>Name the doc, choose destination <b>folder</b> — FR-4.1 / FR-4.2.</li><li>Export format PDF or image bundle — FR-3.7.</li><li><b>File size</b> selector compresses output (High / Balanced / Small); revertible to original — FR-4.7.</li><li>Drive backup toggle; “Save and sync” queues upload — FR-7.2.</li></ul></div>
+    </div>
+  </div>
+
+  <!-- SECTION D -->
+  <div class="sec"><span class="n">D</span><h3>Organize &amp; document</h3><span class="ref">PRD §5.6 · §5.7 · §5.8</span></div>
+  <div class="grid">
+
+    <!-- 08 Folders -->
+    <div class="screen"><div class="device"><div class="scr">
+      <div class="status"><span>9:41</span><span class="r"><svg class="i"><use href="#ic-cloud"/></svg><span>100%</span></span></div>
+      <div class="topbar"><span class="title">Folders</span><span class="sp"><span class="pill accent"><svg class="i" style="width:13px;height:13px"><use href="#ic-plus"/></svg>New</span></span></div>
+      <div class="content pad col">
+        <div class="foldergrid">
+          <div class="fld"><span class="fi"><svg class="i"><use href="#ic-folder"/></svg></span><div class="nm">Receipts</div><div class="ct">24 documents</div></div>
+          <div class="fld"><span class="fi"><svg class="i"><use href="#ic-folder"/></svg></span><div class="nm">University</div><div class="ct">61 documents</div></div>
+          <div class="fld"><span class="fi"><svg class="i"><use href="#ic-folder"/></svg></span><div class="nm">Contracts</div><div class="ct">9 documents</div></div>
+          <div class="fld"><span class="fi"><svg class="i"><use href="#ic-folder"/></svg></span><div class="nm">IDs</div><div class="ct">4 documents</div></div>
+          <div class="fld"><span class="fi"><svg class="i"><use href="#ic-folder"/></svg></span><div class="nm">Travel</div><div class="ct">17 documents</div></div>
+          <div class="fld"><span class="fi"><svg class="i"><use href="#ic-folder"/></svg></span><div class="nm">Warranties</div><div class="ct">6 documents</div></div>
+        </div>
+      </div>
+      <div class="tabs"><a><svg class="i"><use href="#ic-home"/></svg><span>Home</span></a><a class="on"><svg class="i"><use href="#ic-folder"/></svg><span>Folders</span></a><a><svg class="i"><use href="#ic-search"/></svg><span>Search</span></a><a><svg class="i"><use href="#ic-user"/></svg><span>Account</span></a></div>
+    </div></div>
+      <div class="cap"><p class="cn">SCREEN 08</p><h4>Folders</h4>
+        <ul class="notes"><li>Create, rename, delete; item count per folder — FR-5.1.</li><li>Documents move between folders — FR-5.3.</li><li>Can mirror the drive’s folder tree — FR-5.4 (nested folders open, PRD §11.7).</li></ul></div>
+    </div>
+
+    <!-- 09 Document detail -->
+    <div class="screen"><div class="device"><div class="scr">
+      <div class="status"><span>9:41</span><span class="r"><svg class="i"><use href="#ic-cloud"/></svg><span>100%</span></span></div>
+      <div class="topbar"><span class="iconbtn"><svg class="i"><use href="#ic-back"/></svg></span><span class="title" style="font-size:15px">Invoice — July</span><span class="sp"><span class="iconbtn"><svg class="i"><use href="#ic-dots"/></svg></span></span></div>
+      <div class="content pad col">
+        <div class="chips"><span class="pill ok"><svg class="i"><use href="#ic-check"/></svg>Synced · Drive</span><span class="pill info">5 pages</span><span class="pill info">PDF · 1.2 MB</span></div>
+        <div class="bigpage"><div class="paper"><i class="h"></i><i></i><i class="m"></i><i></i><i class="s"></i><i></i><i class="m"></i><i></i><i class="s"></i></div></div>
+        <div class="actionrow">
+          <button class="btn ghost sm"><svg class="i"><use href="#ic-share"/></svg>Share</button>
+          <button class="btn ghost sm"><svg class="i"><use href="#ic-edit"/></svg>Edit</button>
+          <button class="btn pri sm"><svg class="i"><use href="#ic-lang"/></svg>Translate</button>
+        </div>
+      </div>
+    </div></div>
+      <div class="cap"><p class="cn">SCREEN 09</p><h4>Document detail</h4>
+        <ul class="notes"><li>Metadata: pages, size, format, sync state — FR-4.4 / FR-7.4.</li><li>Share/export, re-open editor — FR-4.5.</li><li>Entry point into Translate — FR-6.1.</li></ul></div>
+    </div>
+
+    <!-- 10 Translate -->
+    <div class="screen"><div class="device"><div class="scr">
+      <div class="status"><span>9:41</span><span class="r"><svg class="i"><use href="#ic-cloud"/></svg><span>100%</span></span></div>
+      <div class="topbar"><span class="iconbtn"><svg class="i"><use href="#ic-back"/></svg></span><span class="title" style="font-size:15px">Translate</span><span class="sp"><span class="pill ok">On-device · Free</span></span></div>
+      <div class="content pad col" style="gap:11px">
+        <div class="lang">
+          <div class="sel"><span>Auto-detect</span><svg class="i"><use href="#ic-down"/></svg></div>
+          <div class="swap"><svg class="i"><use href="#ic-swap"/></svg></div>
+          <div class="sel"><span>Spanish</span><svg class="i"><use href="#ic-down"/></svg></div>
+        </div>
+        <div class="seg"><button class="on">Side by side</button><button>Translated only</button></div>
+        <div class="tpanels">
+          <div class="tp"><span class="lbl">Original</span><p>Dear tenant, this letter confirms the terms of your lease beginning 1 August. Rent is due on the first of each month.</p></div>
+          <div class="tp out"><span class="lbl">Spanish</span><p>Estimado inquilino, esta carta confirma los términos de su contrato de arrendamiento a partir del 1 de agosto. El alquiler vence el primero de cada mes.</p></div>
+        </div>
+        <div style="display:flex;gap:9px"><button class="btn ghost sm" style="flex:1"><svg class="i"><use href="#ic-copy"/></svg>Copy</button><button class="btn pri sm" style="flex:1"><svg class="i"><use href="#ic-save"/></svg>Save as doc</button></div>
+      </div>
+    </div></div>
+      <div class="cap"><p class="cn">SCREEN 10</p><h4>Translate</h4>
+        <ul class="notes"><li>OCR → translate; auto-detect source, pick target — FR-6.1 / FR-6.2 / FR-6.5.</li><li>Side-by-side or translated-only — FR-6.3.</li><li>Copy or save as new doc — FR-6.4. Free = on-device; high-accuracy cloud = paid (PRD §11.1).</li></ul></div>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <p style="margin:0 0 6px">This is the high-fidelity pass of the 10 core screens in <code class="k">wireframes.html</code>, styled to the minimal &amp; neutral direction. Import to Figma via html.to.design (steps above), then componentize and add the deferred secondary screens (search results, trash/restore, account/settings, offline sync queue) noted in the PRD.</p>
+    <p style="margin:0">Both light and dark themes are defined — Figma imports whichever theme the page is viewed in, so import once per theme if you want both.</p>
+  </footer>
+
+</div>
+</div>

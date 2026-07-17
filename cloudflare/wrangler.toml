@@ -1,0 +1,19 @@
+name = "scanpro-api"
+main = "src/index.ts"
+compatibility_date = "2024-10-01"
+
+# D1 database binding. Create it with `npm run db:create`, then paste the
+# returned database_id below (and into your CI secrets for deploys).
+[[d1_databases]]
+binding = "DB"
+database_name = "scanpro"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# Non-secret vars. FIREBASE_PROJECT_ID is used to validate Firebase ID tokens
+# (issuer/audience). It is not a secret, but keep it accurate.
+[vars]
+FIREBASE_PROJECT_ID = "your-firebase-project-id"
+
+# Migrations live in ./migrations and are applied with `npm run db:migrate`.
+[migrations]
+directory = "migrations"

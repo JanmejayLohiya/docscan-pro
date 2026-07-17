@@ -1,0 +1,23 @@
+{
+  "name": "scanpro-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create scanpro",
+    "db:migrate:local": "wrangler d1 migrations apply scanpro --local",
+    "db:migrate": "wrangler d1 migrations apply scanpro --remote",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.6.3",
+    "jose": "^5.9.6"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241004.0",
+    "typescript": "^5.6.2",
+    "wrangler": "^3.80.0"
+  }
+}
