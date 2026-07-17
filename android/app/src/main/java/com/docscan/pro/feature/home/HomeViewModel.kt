@@ -3,19 +3,22 @@ package com.docscan.pro.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.docscan.pro.data.DocumentRepository
-import com.docscan.pro.network.DocumentDto
+import com.docscan.pro.domain.Document
+import com.docscan.pro.feature.scan.ScannedPages
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 data class HomeUiState(
-    val isLoading: Boolean = false,
-    val documents: List<DocumentDto> = emptyList(),
-    val error: String? = null,
+    val isLoading: Boolean = true,
+    val documents: List<Document> = emptyList(),
 )
 
 @HiltViewModel
@@ -23,18 +26,18 @@ class HomeViewModel @Inject constructor(
     private val repository: DocumentRepository,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(HomeUiState())
-    val state: StateFlow<HomeUiState> = _state.asStateFlow()
+    val state: StateFlow<HomeUiState> =
+        repository.observeDocuments()
+            .map { HomeUiState(isLoading = false, documents = it) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
-    init { refresh() }
-
-    fun refresh() {
-        _state.update { it.copy(isLoading = true, error = null) }
+    fun onScanned(scan: ScannedPages) {
+        if (scan.pageUris.isEmpty()) return
         viewModelScope.launch {
-            repository.getDocuments().fold(
-                onSuccess = { docs -> _state.update { it.copy(isLoading = false, documents = docs) } },
-                onFailure = { e -> _state.update { it.copy(isLoading = false, error = e.message ?: "Couldn't load documents") } },
-            )
+            repository.saveScannedDocument(defaultName(), scan)
         }
     }
+
+    private fun defaultName(): String =
+        "Scan " + SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
 }
