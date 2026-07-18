@@ -9,6 +9,7 @@ import com.docscan.pro.domain.Document
 import com.docscan.pro.domain.Page
 import com.docscan.pro.feature.scan.ScannedPages
 import com.docscan.pro.util.buildPdf
+import com.docscan.pro.util.eraseOnImage
 import com.docscan.pro.util.rotateImageFile
 import com.docscan.pro.util.scaleImageFile
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -136,6 +137,20 @@ class DocumentRepository @Inject constructor(
     /** Inserts external images (from the gallery/files) as new pages. FR-E.10 */
     suspend fun insertImages(documentId: String, uris: List<Uri>): Result<Unit> =
         addPages(documentId, ScannedPages(pdfUri = null, pageUris = uris))
+
+    /** Paints erase strokes (paper-white) onto a page. FR-E.5 */
+    suspend fun erasePage(
+        documentId: String,
+        pageId: String,
+        strokes: List<FloatArray>,
+        displayW: Float,
+        displayH: Float,
+        brushPx: Float,
+    ): Result<Unit> = edit(documentId) {
+        val page = dao.getPages(documentId).firstOrNull { it.id == pageId } ?: return@edit
+        eraseOnImage(page.imagePath, strokes, displayW, displayH, brushPx)
+        dao.updatePages(listOf(page.copy(updatedAt = System.currentTimeMillis())))
+    }
 
     suspend fun delete(id: String) = dao.softDelete(id, System.currentTimeMillis())
 

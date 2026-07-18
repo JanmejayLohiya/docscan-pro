@@ -60,6 +60,11 @@ class EditorViewModel @Inject constructor(
         viewModelScope.launch { repository.resizePage(documentId, pageId) }
     }
 
+    fun erase(pageId: String, strokes: List<FloatArray>, displayW: Float, displayH: Float, brushPx: Float) {
+        if (strokes.isEmpty()) return
+        viewModelScope.launch { repository.erasePage(documentId, pageId, strokes, displayW, displayH, brushPx) }
+    }
+
     fun insertImages(uris: List<Uri>) {
         if (uris.isEmpty()) return
         viewModelScope.launch { repository.insertImages(documentId, uris) }

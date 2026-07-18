@@ -23,6 +23,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -67,6 +70,20 @@ fun EditorScreen(
         cropLauncher.launch(CropImageContractOptions(uri, CropImageOptions()))
     }
 
+    var erasingPage by remember { mutableStateOf<Page?>(null) }
+    val erasing = erasingPage
+    if (erasing != null) {
+        EraseOverlay(
+            imagePath = erasing.imagePath,
+            onCancel = { erasingPage = null },
+            onApply = { strokes, w, h, brush ->
+                viewModel.erase(erasing.id, strokes, w, h, brush)
+                erasingPage = null
+            },
+        )
+        return
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -96,6 +113,7 @@ fun EditorScreen(
                         onCrop = { startCrop(page) },
                         onRotate = { viewModel.rotate(page.id) },
                         onResize = { viewModel.resize(page.id) },
+                        onErase = { erasingPage = page },
                         onRemove = { viewModel.remove(page.id) },
                     )
                     HorizontalDivider()
@@ -127,6 +145,7 @@ private fun PageRow(
     onCrop: () -> Unit,
     onRotate: () -> Unit,
     onResize: () -> Unit,
+    onErase: () -> Unit,
     onRemove: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(12.dp)) {
@@ -148,6 +167,7 @@ private fun PageRow(
             OutlinedButton(onClick = onCrop) { Text("Crop") }
             OutlinedButton(onClick = onRotate) { Text("Rotate") }
             OutlinedButton(onClick = onResize) { Text("Resize") }
+            OutlinedButton(onClick = onErase) { Text("Erase") }
             OutlinedButton(onClick = onRemove) { Text("Delete") }
         }
     }
