@@ -1,5 +1,6 @@
 package com.docscan.pro.feature.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +30,7 @@ import com.docscan.pro.feature.scan.rememberScanLauncher
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    onOpenDocument: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -47,17 +49,22 @@ fun HomeScreen(
                     "No documents yet. Tap Scan to create your first.",
                     modifier = Modifier.padding(24.dp),
                 )
-                else -> DocumentList(state.documents)
+                else -> DocumentList(state.documents, onOpenDocument)
             }
         }
     }
 }
 
 @Composable
-private fun DocumentList(documents: List<Document>) {
+private fun DocumentList(documents: List<Document>, onOpen: (String) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(documents, key = { it.id }) { doc ->
-            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpen(doc.id) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            ) {
                 Text(
                     doc.name,
                     style = MaterialTheme.typography.titleMedium,
