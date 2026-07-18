@@ -13,15 +13,16 @@ import java.io.FileOutputStream
  * Phase-2 erase). Each stroke is a flat [x0,y0,x1,y1,...] array in *display*
  * coordinates; we scale it to the bitmap's pixel space before drawing. FR-E.5
  */
-fun eraseOnImage(
-    path: String,
+fun eraseImage(
+    srcPath: String,
+    dstPath: String,
     strokes: List<FloatArray>,
     displayW: Float,
     displayH: Float,
     brushDisplayPx: Float,
 ) {
     if (strokes.isEmpty() || displayW <= 0f || displayH <= 0f) return
-    val decoded = BitmapFactory.decodeFile(path) ?: return
+    val decoded = BitmapFactory.decodeFile(srcPath) ?: return
     val bmp = if (decoded.isMutable) decoded else decoded.copy(Bitmap.Config.ARGB_8888, true)
     if (bmp !== decoded) decoded.recycle()
 
@@ -55,6 +56,6 @@ fun eraseOnImage(
         }
     }
 
-    FileOutputStream(path).use { bmp.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+    FileOutputStream(dstPath).use { bmp.compress(Bitmap.CompressFormat.JPEG, 90, it) }
     bmp.recycle()
 }

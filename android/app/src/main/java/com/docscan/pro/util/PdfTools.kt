@@ -40,27 +40,27 @@ fun buildPdf(imagePaths: List<String>, out: File) {
     }
 }
 
-/** Scales the image at [path] down so its longest edge is at most [maxEdge], in place. */
-fun scaleImageFile(path: String, maxEdge: Int) {
-    val src = BitmapFactory.decodeFile(path) ?: return
+/** Scales [srcPath] so its longest edge is at most [maxEdge] and writes it to [dstPath]. */
+fun scaleImage(srcPath: String, dstPath: String, maxEdge: Int) {
+    val src = BitmapFactory.decodeFile(srcPath) ?: return
     val longEdge = maxOf(src.width, src.height)
-    if (longEdge <= maxEdge) {
-        src.recycle()
-        return
+    val out = if (longEdge <= maxEdge) {
+        src
+    } else {
+        val ratio = maxEdge.toFloat() / longEdge
+        Bitmap.createScaledBitmap(src, (src.width * ratio).toInt(), (src.height * ratio).toInt(), true)
     }
-    val ratio = maxEdge.toFloat() / longEdge
-    val scaled = Bitmap.createScaledBitmap(src, (src.width * ratio).toInt(), (src.height * ratio).toInt(), true)
-    FileOutputStream(path).use { scaled.compress(Bitmap.CompressFormat.JPEG, 90, it) }
-    if (scaled != src) src.recycle()
-    scaled.recycle()
+    FileOutputStream(dstPath).use { out.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+    if (out != src) src.recycle()
+    out.recycle()
 }
 
-/** Rotates the image at [path] in place by [degrees] and re-saves it as JPEG. */
-fun rotateImageFile(path: String, degrees: Int) {
-    val src = BitmapFactory.decodeFile(path) ?: return
+/** Rotates [srcPath] by [degrees] and writes the result to [dstPath] (non-destructive). */
+fun rotateImage(srcPath: String, dstPath: String, degrees: Int) {
+    val src = BitmapFactory.decodeFile(srcPath) ?: return
     val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
     val rotated = Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
-    FileOutputStream(path).use { rotated.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+    FileOutputStream(dstPath).use { rotated.compress(Bitmap.CompressFormat.JPEG, 90, it) }
     if (rotated != src) src.recycle()
     rotated.recycle()
 }

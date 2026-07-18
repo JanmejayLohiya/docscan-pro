@@ -44,6 +44,9 @@ interface DocumentDao {
     @Query("DELETE FROM pages WHERE id = :pageId")
     suspend fun deletePageById(pageId: String)
 
+    @Query("DELETE FROM pages WHERE document_id = :documentId")
+    suspend fun deletePagesForDocument(documentId: String)
+
     @Query("UPDATE documents SET deleted_at = :now, updated_at = :now WHERE id = :id")
     suspend fun softDelete(id: String, now: Long)
 

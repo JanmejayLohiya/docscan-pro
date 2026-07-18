@@ -91,6 +91,10 @@ fun EditorScreen(
                     Text(state.document?.name ?: "Edit", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
                 navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+                actions = {
+                    TextButton(onClick = viewModel::undo, enabled = state.canUndo) { Text("Undo") }
+                    TextButton(onClick = viewModel::redo, enabled = state.canRedo) { Text("Redo") }
+                },
             )
         },
     ) { padding ->

@@ -9,9 +9,9 @@ import com.docscan.pro.domain.Document
 import com.docscan.pro.domain.Page
 import com.docscan.pro.feature.scan.ScannedPages
 import com.docscan.pro.util.buildPdf
-import com.docscan.pro.util.eraseOnImage
-import com.docscan.pro.util.rotateImageFile
-import com.docscan.pro.util.scaleImageFile
+import com.docscan.pro.util.eraseImage
+import com.docscan.pro.util.rotateImage
+import com.docscan.pro.util.scaleImage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -24,9 +24,10 @@ import javax.inject.Singleton
 
 /**
  * Local-first document store. Files (PDF + page images) live in app-private
- * storage; metadata lives in Room. Every edit rebuilds the PDF from the current
- * page images and updates the document's page count/size. Cross-device sync with
- * the Cloudflare API arrives in Phase 4 (see PHASED_PLAN.md).
+ * storage; metadata lives in Room. Image edits are NON-DESTRUCTIVE: each writes
+ * a new versioned image file and repoints the page at it, leaving the old file
+ * on disk so undo/redo can restore it. Every edit rebuilds the PDF and refreshes
+ * the document's metadata. Cross-device sync arrives in Phase 4 (see PHASED_PLAN.md).
  */
 @Singleton
 class DocumentRepository @Inject constructor(
@@ -53,7 +54,7 @@ class DocumentRepository @Inject constructor(
 
                 val pages = scan.pageUris.mapIndexed { index, uri ->
                     val pageId = UUID.randomUUID().toString()
-                    val file = File(dir, "page_$pageId.jpg")
+                    val file = File(dir, "page_${pageId}.jpg")
                     copyUriToFile(uri, file)
                     PageEntity(pageId, id, index, file.absolutePath, now)
                 }
@@ -75,15 +76,15 @@ class DocumentRepository @Inject constructor(
             }
         }
 
-    // ---- Edit operations (Phase 2) ----
-    /** Appends newly scanned/imported pages to an existing document. FR-E.3 */
+    // ---- Edit operations ----
+    /** Appends newly scanned/imported pages. FR-E.3 */
     suspend fun addPages(documentId: String, scan: ScannedPages): Result<Unit> = edit(documentId) {
         val dir = File(context.filesDir, "documents/$documentId").apply { mkdirs() }
         val now = System.currentTimeMillis()
         var index = dao.getPages(documentId).size
         val newPages = scan.pageUris.map { uri ->
             val pageId = UUID.randomUUID().toString()
-            val file = File(dir, "page_$pageId.jpg")
+            val file = File(dir, "page_${pageId}.jpg")
             copyUriToFile(uri, file)
             PageEntity(pageId, documentId, index++, file.absolutePath, now)
         }
@@ -101,44 +102,45 @@ class DocumentRepository @Inject constructor(
             dao.updatePages(reindexed)
         }
 
-    /** Removes a page and re-indexes the rest. FR-E.2 */
+    /** Removes a page and re-indexes the rest. Keeps the image file for undo. FR-E.2 */
     suspend fun removePage(documentId: String, pageId: String): Result<Unit> = edit(documentId) {
-        val page = dao.getPages(documentId).firstOrNull { it.id == pageId }
         dao.deletePageById(pageId)
-        page?.let { runCatching { File(it.imagePath).delete() } }
         val now = System.currentTimeMillis()
         val reindexed = dao.getPages(documentId).mapIndexed { i, p -> p.copy(orderIndex = i, updatedAt = now) }
         dao.updatePages(reindexed)
     }
 
-    /** Rotates a page 90° clockwise (destructive in Phase 2A). FR-E.4 */
+    /** Rotates a page 90° clockwise into a new image version. FR-E.4 */
     suspend fun rotatePage(documentId: String, pageId: String): Result<Unit> = edit(documentId) {
         val page = dao.getPages(documentId).firstOrNull { it.id == pageId } ?: return@edit
-        rotateImageFile(page.imagePath, 90)
-        dao.updatePages(listOf(page.copy(updatedAt = System.currentTimeMillis())))
+        val dst = versionedFile(documentId, pageId)
+        rotateImage(page.imagePath, dst.absolutePath, 90)
+        dao.updatePages(listOf(page.copy(imagePath = dst.absolutePath, updatedAt = System.currentTimeMillis())))
     }
 
-    /** Replaces a page's image with the given (already-processed) source, e.g. a crop result. FR-E.4 */
+    /** Replaces a page's image with a processed source (e.g. a crop result). FR-E.4 */
     suspend fun replacePageImage(documentId: String, pageId: String, source: Uri): Result<Unit> =
         edit(documentId) {
             val page = dao.getPages(documentId).firstOrNull { it.id == pageId } ?: return@edit
-            copyUriToFile(source, File(page.imagePath))
-            dao.updatePages(listOf(page.copy(updatedAt = System.currentTimeMillis())))
+            val dst = versionedFile(documentId, pageId)
+            copyUriToFile(source, dst)
+            dao.updatePages(listOf(page.copy(imagePath = dst.absolutePath, updatedAt = System.currentTimeMillis())))
         }
 
     /** Scales a page's image down to [maxEdge] px on its longest side. FR-E.9 */
     suspend fun resizePage(documentId: String, pageId: String, maxEdge: Int = 1600): Result<Unit> =
         edit(documentId) {
             val page = dao.getPages(documentId).firstOrNull { it.id == pageId } ?: return@edit
-            scaleImageFile(page.imagePath, maxEdge)
-            dao.updatePages(listOf(page.copy(updatedAt = System.currentTimeMillis())))
+            val dst = versionedFile(documentId, pageId)
+            scaleImage(page.imagePath, dst.absolutePath, maxEdge)
+            dao.updatePages(listOf(page.copy(imagePath = dst.absolutePath, updatedAt = System.currentTimeMillis())))
         }
 
-    /** Inserts external images (from the gallery/files) as new pages. FR-E.10 */
+    /** Inserts external images as new pages. FR-E.10 */
     suspend fun insertImages(documentId: String, uris: List<Uri>): Result<Unit> =
         addPages(documentId, ScannedPages(pdfUri = null, pageUris = uris))
 
-    /** Paints erase strokes (paper-white) onto a page. FR-E.5 */
+    /** Paints erase strokes (paper-white) into a new image version. FR-E.5 */
     suspend fun erasePage(
         documentId: String,
         pageId: String,
@@ -148,16 +150,22 @@ class DocumentRepository @Inject constructor(
         brushPx: Float,
     ): Result<Unit> = edit(documentId) {
         val page = dao.getPages(documentId).firstOrNull { it.id == pageId } ?: return@edit
-        eraseOnImage(page.imagePath, strokes, displayW, displayH, brushPx)
-        dao.updatePages(listOf(page.copy(updatedAt = System.currentTimeMillis())))
+        val dst = versionedFile(documentId, pageId)
+        eraseImage(page.imagePath, dst.absolutePath, strokes, displayW, displayH, brushPx)
+        dao.updatePages(listOf(page.copy(imagePath = dst.absolutePath, updatedAt = System.currentTimeMillis())))
+    }
+
+    /** Restores the page set to a previous snapshot (undo/redo). FR-E.7 */
+    suspend fun restorePages(documentId: String, pages: List<Page>): Result<Unit> = edit(documentId) {
+        val now = System.currentTimeMillis()
+        dao.deletePagesForDocument(documentId)
+        val entities = pages.mapIndexed { i, p -> PageEntity(p.id, documentId, i, p.imagePath, now) }
+        dao.insertPages(entities)
     }
 
     suspend fun delete(id: String) = dao.softDelete(id, System.currentTimeMillis())
 
-    /**
-     * Runs [mutate] on the IO dispatcher, then rebuilds the PDF from the current
-     * ordered page images and refreshes the document's metadata.
-     */
+    /** Runs [mutate], then rebuilds the PDF from current pages and refreshes metadata. */
     private suspend fun edit(documentId: String, mutate: suspend () -> Unit): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -176,6 +184,11 @@ class DocumentRepository @Inject constructor(
                 )
             }
         }
+
+    private fun versionedFile(documentId: String, pageId: String): File {
+        val dir = File(context.filesDir, "documents/$documentId").apply { mkdirs() }
+        return File(dir, "page_${pageId}_${UUID.randomUUID()}.jpg")
+    }
 
     private fun copyUriToFile(uri: Uri, target: File) {
         context.contentResolver.openInputStream(uri)?.use { input ->
