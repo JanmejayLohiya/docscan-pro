@@ -40,6 +40,21 @@ fun buildPdf(imagePaths: List<String>, out: File) {
     }
 }
 
+/** Scales the image at [path] down so its longest edge is at most [maxEdge], in place. */
+fun scaleImageFile(path: String, maxEdge: Int) {
+    val src = BitmapFactory.decodeFile(path) ?: return
+    val longEdge = maxOf(src.width, src.height)
+    if (longEdge <= maxEdge) {
+        src.recycle()
+        return
+    }
+    val ratio = maxEdge.toFloat() / longEdge
+    val scaled = Bitmap.createScaledBitmap(src, (src.width * ratio).toInt(), (src.height * ratio).toInt(), true)
+    FileOutputStream(path).use { scaled.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+    if (scaled != src) src.recycle()
+    scaled.recycle()
+}
+
 /** Rotates the image at [path] in place by [degrees] and re-saves it as JPEG. */
 fun rotateImageFile(path: String, degrees: Int) {
     val src = BitmapFactory.decodeFile(path) ?: return

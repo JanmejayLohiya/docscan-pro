@@ -10,6 +10,7 @@ import com.docscan.pro.domain.Page
 import com.docscan.pro.feature.scan.ScannedPages
 import com.docscan.pro.util.buildPdf
 import com.docscan.pro.util.rotateImageFile
+import com.docscan.pro.util.scaleImageFile
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -115,6 +116,26 @@ class DocumentRepository @Inject constructor(
         rotateImageFile(page.imagePath, 90)
         dao.updatePages(listOf(page.copy(updatedAt = System.currentTimeMillis())))
     }
+
+    /** Replaces a page's image with the given (already-processed) source, e.g. a crop result. FR-E.4 */
+    suspend fun replacePageImage(documentId: String, pageId: String, source: Uri): Result<Unit> =
+        edit(documentId) {
+            val page = dao.getPages(documentId).firstOrNull { it.id == pageId } ?: return@edit
+            copyUriToFile(source, File(page.imagePath))
+            dao.updatePages(listOf(page.copy(updatedAt = System.currentTimeMillis())))
+        }
+
+    /** Scales a page's image down to [maxEdge] px on its longest side. FR-E.9 */
+    suspend fun resizePage(documentId: String, pageId: String, maxEdge: Int = 1600): Result<Unit> =
+        edit(documentId) {
+            val page = dao.getPages(documentId).firstOrNull { it.id == pageId } ?: return@edit
+            scaleImageFile(page.imagePath, maxEdge)
+            dao.updatePages(listOf(page.copy(updatedAt = System.currentTimeMillis())))
+        }
+
+    /** Inserts external images (from the gallery/files) as new pages. FR-E.10 */
+    suspend fun insertImages(documentId: String, uris: List<Uri>): Result<Unit> =
+        addPages(documentId, ScannedPages(pdfUri = null, pageUris = uris))
 
     suspend fun delete(id: String) = dao.softDelete(id, System.currentTimeMillis())
 

@@ -1,5 +1,6 @@
 package com.docscan.pro.feature.editor
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -53,5 +54,25 @@ class EditorViewModel @Inject constructor(
     fun addPages(scan: ScannedPages) {
         if (scan.pageUris.isEmpty()) return
         viewModelScope.launch { repository.addPages(documentId, scan) }
+    }
+
+    fun resize(pageId: String) {
+        viewModelScope.launch { repository.resizePage(documentId, pageId) }
+    }
+
+    fun insertImages(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        viewModelScope.launch { repository.insertImages(documentId, uris) }
+    }
+
+    // ---- Crop (result comes back from the cropper Activity) ----
+    private var pendingCropPageId: String? = null
+
+    fun beginCrop(pageId: String) { pendingCropPageId = pageId }
+
+    fun applyCrop(resultUri: Uri) {
+        val pageId = pendingCropPageId ?: return
+        pendingCropPageId = null
+        viewModelScope.launch { repository.replacePageImage(documentId, pageId, resultUri) }
     }
 }

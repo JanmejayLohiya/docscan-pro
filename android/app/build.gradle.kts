@@ -75,4 +75,5 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.mlkit.document.scanner)
+    implementation(libs.image.cropper)
 }
