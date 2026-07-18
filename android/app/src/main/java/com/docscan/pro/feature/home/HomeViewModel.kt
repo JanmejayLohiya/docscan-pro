@@ -38,6 +38,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun delete(documentId: String) {
+        viewModelScope.launch { repository.delete(documentId) }
+    }
+
     private fun defaultName(): String =
         "Scan " + SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
 }
