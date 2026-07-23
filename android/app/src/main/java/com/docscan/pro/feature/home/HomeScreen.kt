@@ -199,8 +199,15 @@ private fun SearchContent(
     onDelete: (String) -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
-    val results = if (query.isBlank()) documents
-    else documents.filter { it.name.contains(query.trim(), ignoreCase = true) }
+    val results = if (query.isBlank()) {
+        documents
+    } else {
+        val q = query.trim()
+        documents.filter {
+            it.name.contains(q, ignoreCase = true) ||
+                (it.ocrText?.contains(q, ignoreCase = true) == true)
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         OutlinedTextField(
@@ -208,11 +215,11 @@ private fun SearchContent(
             onValueChange = { query = it },
             singleLine = true,
             leadingIcon = { Icon(Icons.Filled.Search, null) },
-            placeholder = { Text("Search by name") },
+            placeholder = { Text("Search name or text inside") },
             modifier = Modifier.fillMaxWidth().padding(16.dp, 12.dp),
         )
         if (results.isEmpty()) {
-            ComingSoon(Icons.Filled.Search, "No matches", "Try a different name. Full text search arrives with OCR in a later update.")
+            ComingSoon(Icons.Filled.Search, "No matches", "No document name or scanned text matches that.")
         } else {
             LazyColumn(Modifier.fillMaxSize()) {
                 items(results, key = { it.id }) { doc ->

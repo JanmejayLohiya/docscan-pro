@@ -19,6 +19,7 @@ data class DocumentEntity(
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
     @ColumnInfo(name = "deleted_at") val deletedAt: Long?,
+    @ColumnInfo(name = "ocr_text") val ocrText: String? = null,
 )
 
 @Entity(

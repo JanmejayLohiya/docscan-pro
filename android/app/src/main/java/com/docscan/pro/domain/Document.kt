@@ -10,4 +10,5 @@ data class Document(
     val syncState: String,
     val filePath: String,
     val createdAt: Long,
+    val ocrText: String? = null,
 )
