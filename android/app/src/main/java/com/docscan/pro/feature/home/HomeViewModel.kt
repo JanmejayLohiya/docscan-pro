@@ -38,6 +38,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun rename(documentId: String, name: String) {
+        viewModelScope.launch { repository.rename(documentId, name) }
+    }
+
     fun delete(documentId: String) {
         viewModelScope.launch { repository.delete(documentId) }
     }

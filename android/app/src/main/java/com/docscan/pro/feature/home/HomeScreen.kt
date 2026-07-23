@@ -17,35 +17,33 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DocumentScanner
-import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -75,43 +73,20 @@ fun HomeScreen(
     val launchScan = rememberScanLauncher(onScanned = viewModel::onScanned)
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("DocScan Pro") },
-                actions = {
-                    IconButton(onClick = { tab = 2 }) {
-                        Icon(Icons.Filled.Search, contentDescription = "Search")
-                    }
-                    IconButton(onClick = { tab = 3 }) {
-                        Icon(Icons.Filled.AccountCircle, contentDescription = "Account")
-                    }
-                },
-            )
-        },
+        topBar = { TopAppBar(title = { Text("DocScan Pro") }) },
         bottomBar = {
-            NavigationBar {
-                NavigationBarItem(tab == 0, { tab = 0 }, { Icon(Icons.Filled.Home, null) }, label = { Text("Home") })
-                NavigationBarItem(tab == 1, { tab = 1 }, { Icon(Icons.Filled.Folder, null) }, label = { Text("Folders") })
-                NavigationBarItem(tab == 2, { tab = 2 }, { Icon(Icons.Filled.Search, null) }, label = { Text("Search") })
-                NavigationBarItem(tab == 3, { tab = 3 }, { Icon(Icons.Filled.Person, null) }, label = { Text("Account") })
-            }
-        },
-        floatingActionButton = {
-            if (tab == 0) {
-                ExtendedFloatingActionButton(
-                    onClick = launchScan,
-                    icon = { Icon(Icons.Filled.DocumentScanner, null) },
-                    text = { Text("Scan") },
-                )
-            }
+            HomeBottomBar(
+                selected = tab,
+                onHome = { tab = 0 },
+                onScan = launchScan,
+                onAccount = { tab = 1 },
+            )
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when (tab) {
-                0 -> HomeContent(state, onOpenDocument, viewModel::delete, onSearchClick = { tab = 2 })
-                1 -> ComingSoon(Icons.Filled.Folder, "Folders", "Organize your scans into folders — arriving in the next update.")
-                2 -> ComingSoon(Icons.Filled.Search, "Search", "Find documents by name or by the text inside them — coming soon.")
-                3 -> AccountTab()
+                0 -> HomeContent(state, onOpenDocument, viewModel::rename, viewModel::delete)
+                else -> AccountTab()
             }
         }
     }
@@ -121,27 +96,12 @@ fun HomeScreen(
 private fun HomeContent(
     state: HomeUiState,
     onOpen: (String) -> Unit,
+    onRename: (String, String) -> Unit,
     onDelete: (String) -> Unit,
-    onSearchClick: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable { onSearchClick() }
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Search documents & text", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("Recent", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
@@ -154,8 +114,9 @@ private fun HomeContent(
             state.documents.isEmpty() ->
                 ComingSoon(Icons.Filled.DocumentScanner, "No documents yet", "Tap Scan to capture your first document.")
             else -> LazyColumn(Modifier.fillMaxSize()) {
-                items(state.documents, key = { it.id }) { doc ->
-                    DocumentRow(doc, onOpen, onDelete)
+                // Recent activity = the 3 most recently updated PDFs.
+                items(state.documents.take(3), key = { it.id }) { doc ->
+                    DocumentRow(doc, onOpen, onRename, onDelete)
                     HorizontalDivider()
                 }
             }
@@ -165,8 +126,15 @@ private fun HomeContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DocumentRow(doc: Document, onOpen: (String) -> Unit, onDelete: (String) -> Unit) {
+private fun DocumentRow(
+    doc: Document,
+    onOpen: (String) -> Unit,
+    onRename: (String, String) -> Unit,
+    onDelete: (String) -> Unit,
+) {
     var menuOpen by remember { mutableStateOf(false) }
+    var showRename by remember { mutableStateOf(false) }
+
     ListItem(
         modifier = Modifier.clickable { onOpen(doc.id) },
         leadingContent = {
@@ -189,6 +157,11 @@ private fun DocumentRow(doc: Document, onOpen: (String) -> Unit, onDelete: (Stri
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(
+                            text = { Text("Rename") },
+                            leadingIcon = { Icon(Icons.Filled.Edit, null) },
+                            onClick = { showRename = true; menuOpen = false },
+                        )
+                        DropdownMenuItem(
                             text = { Text("Delete") },
                             leadingIcon = { Icon(Icons.Filled.Delete, null) },
                             onClick = { onDelete(doc.id); menuOpen = false },
@@ -199,6 +172,84 @@ private fun DocumentRow(doc: Document, onOpen: (String) -> Unit, onDelete: (Stri
         },
         colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
     )
+
+    if (showRename) {
+        RenameDialog(
+            current = doc.name,
+            onDismiss = { showRename = false },
+            onConfirm = { name -> onRename(doc.id, name); showRename = false },
+        )
+    }
+}
+
+@Composable
+private fun RenameDialog(current: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var text by remember(current) { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename document") },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                singleLine = true,
+                label = { Text("Name") },
+            )
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(text) }, enabled = text.isNotBlank()) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun HomeBottomBar(
+    selected: Int,
+    onHome: () -> Unit,
+    onScan: () -> Unit,
+    onAccount: () -> Unit,
+) {
+    Column {
+        HorizontalDivider()
+        Row(
+            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).height(76.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            NavTab(Modifier.weight(1f), Icons.Filled.Home, "Home", selected == 0, onHome)
+            Column(
+                Modifier.weight(1f).clickable(onClick = onScan),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Box(
+                    Modifier.size(56.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Filled.DocumentScanner,
+                        "Scan",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(30.dp),
+                    )
+                }
+                Spacer(Modifier.height(2.dp))
+                Text("Scan", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            }
+            NavTab(Modifier.weight(1f), Icons.Filled.Person, "Account", selected == 1, onAccount)
+        }
+    }
+}
+
+@Composable
+private fun NavTab(modifier: Modifier, icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+    val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    Column(
+        modifier.clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(icon, null, tint = tint)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = tint)
+    }
 }
 
 @Composable
@@ -236,11 +287,7 @@ private fun ComingSoon(icon: ImageVector, title: String, body: String) {
         Spacer(Modifier.height(12.dp))
         Text(title, style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(4.dp))
-        Text(
-            body,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
