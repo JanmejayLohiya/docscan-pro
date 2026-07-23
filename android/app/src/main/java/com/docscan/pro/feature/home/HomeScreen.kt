@@ -1,5 +1,6 @@
 package com.docscan.pro.feature.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,14 +19,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
@@ -47,7 +51,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -62,6 +65,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.docscan.pro.domain.Document
 import com.docscan.pro.feature.scan.rememberScanLauncher
 
+private enum class Screen { Home, Search, Documents, Account }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -69,24 +74,53 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var tab by remember { mutableIntStateOf(0) }
+    var screen by remember { mutableStateOf(Screen.Home) }
     val launchScan = rememberScanLauncher(onScanned = viewModel::onScanned)
 
+    if (screen != Screen.Home) BackHandler { screen = Screen.Home }
+
     Scaffold(
-        topBar = { TopAppBar(title = { Text("DocScan Pro") }) },
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        when (screen) {
+                            Screen.Documents -> "Documents"
+                            Screen.Search -> "Search"
+                            Screen.Account -> "Account"
+                            else -> "DocScan Pro"
+                        },
+                    )
+                },
+                navigationIcon = {
+                    if (screen == Screen.Search || screen == Screen.Documents) {
+                        TextButton(onClick = { screen = Screen.Home }) { Text("Back") }
+                    }
+                },
+            )
+        },
         bottomBar = {
             HomeBottomBar(
-                selected = tab,
-                onHome = { tab = 0 },
+                selected = if (screen == Screen.Account) 1 else 0,
+                onHome = { screen = Screen.Home },
                 onScan = launchScan,
-                onAccount = { tab = 1 },
+                onAccount = { screen = Screen.Account },
             )
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            when (tab) {
-                0 -> HomeContent(state, onOpenDocument, viewModel::rename, viewModel::delete)
-                else -> AccountTab()
+            when (screen) {
+                Screen.Home -> HomeContent(
+                    state = state,
+                    onOpen = onOpenDocument,
+                    onRename = viewModel::rename,
+                    onDelete = viewModel::delete,
+                    onSearch = { screen = Screen.Search },
+                    onDocuments = { screen = Screen.Documents },
+                )
+                Screen.Search -> SearchContent(state.documents, onOpenDocument, viewModel::rename, viewModel::delete)
+                Screen.Documents -> DocumentsContent(state.documents, onOpenDocument, viewModel::rename, viewModel::delete)
+                Screen.Account -> AccountTab()
             }
         }
     }
@@ -98,8 +132,41 @@ private fun HomeContent(
     onOpen: (String) -> Unit,
     onRename: (String, String) -> Unit,
     onDelete: (String) -> Unit,
+    onSearch: () -> Unit,
+    onDocuments: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
+        // Search entry (before Recent).
+        Row(
+            Modifier.fillMaxWidth().padding(16.dp, 12.dp, 16.dp, 6.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable { onSearch() }
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Search documents", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        // Documents folder — holds every PDF.
+        ListItem(
+            modifier = Modifier.clickable { onDocuments() },
+            leadingContent = {
+                Box(
+                    Modifier.size(44.dp).clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Filled.Folder, null, tint = MaterialTheme.colorScheme.onSecondaryContainer) }
+            },
+            headlineContent = { Text("Documents") },
+            supportingContent = { Text("${state.documents.size} files") },
+            trailingContent = { Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+        )
+        HorizontalDivider()
+
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -114,11 +181,63 @@ private fun HomeContent(
             state.documents.isEmpty() ->
                 ComingSoon(Icons.Filled.DocumentScanner, "No documents yet", "Tap Scan to capture your first document.")
             else -> LazyColumn(Modifier.fillMaxSize()) {
-                // Recent activity = the 3 most recently updated PDFs.
                 items(state.documents.take(3), key = { it.id }) { doc ->
                     DocumentRow(doc, onOpen, onRename, onDelete)
                     HorizontalDivider()
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchContent(
+    documents: List<Document>,
+    onOpen: (String) -> Unit,
+    onRename: (String, String) -> Unit,
+    onDelete: (String) -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    val results = if (query.isBlank()) documents
+    else documents.filter { it.name.contains(query.trim(), ignoreCase = true) }
+
+    Column(Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            singleLine = true,
+            leadingIcon = { Icon(Icons.Filled.Search, null) },
+            placeholder = { Text("Search by name") },
+            modifier = Modifier.fillMaxWidth().padding(16.dp, 12.dp),
+        )
+        if (results.isEmpty()) {
+            ComingSoon(Icons.Filled.Search, "No matches", "Try a different name. Full text search arrives with OCR in a later update.")
+        } else {
+            LazyColumn(Modifier.fillMaxSize()) {
+                items(results, key = { it.id }) { doc ->
+                    DocumentRow(doc, onOpen, onRename, onDelete)
+                    HorizontalDivider()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DocumentsContent(
+    documents: List<Document>,
+    onOpen: (String) -> Unit,
+    onRename: (String, String) -> Unit,
+    onDelete: (String) -> Unit,
+) {
+    if (documents.isEmpty()) {
+        ComingSoon(Icons.Filled.Folder, "No documents yet", "Scanned PDFs are stored here.")
+    } else {
+        LazyColumn(Modifier.fillMaxSize()) {
+            items(documents, key = { it.id }) { doc ->
+                DocumentRow(doc, onOpen, onRename, onDelete)
+                HorizontalDivider()
             }
         }
     }
