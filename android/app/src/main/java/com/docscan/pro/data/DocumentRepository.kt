@@ -163,6 +163,10 @@ class DocumentRepository @Inject constructor(
         dao.insertPages(entities)
     }
 
+    /** Renames a stored PDF document. */
+    suspend fun rename(id: String, name: String) =
+        dao.renameDocument(id, name.trim().ifBlank { "Untitled" }, System.currentTimeMillis())
+
     suspend fun delete(id: String) = dao.softDelete(id, System.currentTimeMillis())
 
     /** Runs [mutate], then rebuilds the PDF from current pages and refreshes metadata. */
