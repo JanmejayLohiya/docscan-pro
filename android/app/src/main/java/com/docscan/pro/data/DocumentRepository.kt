@@ -9,7 +9,9 @@ import com.docscan.pro.domain.Document
 import com.docscan.pro.domain.Page
 import com.docscan.pro.feature.scan.ScannedPages
 import com.docscan.pro.util.buildPdf
+import com.docscan.pro.util.decodeSampled
 import com.docscan.pro.util.eraseImage
+import com.docscan.pro.util.recognizeText
 import com.docscan.pro.util.rotateImage
 import com.docscan.pro.util.scaleImage
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -66,10 +68,12 @@ class DocumentRepository @Inject constructor(
                     0L
                 }
 
+                val ocr = ocrConcat(pages.map { it.imagePath })
                 val document = DocumentEntity(
                     id = id, name = name, pageCount = pages.size, sizeBytes = sizeBytes,
                     format = "PDF", filePath = pdfFile.absolutePath, syncState = "LOCAL_ONLY",
                     folderId = null, createdAt = now, updatedAt = now, deletedAt = null,
+                    ocrText = ocr,
                 )
                 dao.insertDocumentWithPages(document, pages)
                 id
@@ -89,6 +93,13 @@ class DocumentRepository @Inject constructor(
             PageEntity(pageId, documentId, index++, file.absolutePath, now)
         }
         dao.insertPages(newPages)
+        val added = ocrConcat(newPages.map { it.imagePath })
+        if (added.isNotBlank()) {
+            dao.getDocument(documentId)?.let { d ->
+                val merged = listOfNotNull(d.ocrText?.takeIf { it.isNotBlank() }, added).joinToString("\n")
+                dao.updateDocument(d.copy(ocrText = merged))
+            }
+        }
     }
 
     /** Reorders pages to match [orderedPageIds]. FR-E.1 */
@@ -189,6 +200,18 @@ class DocumentRepository @Inject constructor(
             }
         }
 
+    /** Runs OCR over the given page images and concatenates the recognized text. */
+    private suspend fun ocrConcat(paths: List<String>): String {
+        val sb = StringBuilder()
+        for (path in paths) {
+            val bmp = decodeSampled(path) ?: continue
+            val text = recognizeText(bmp)
+            bmp.recycle()
+            if (text.isNotBlank()) sb.append(text).append('\n')
+        }
+        return sb.toString().trim()
+    }
+
     private fun versionedFile(documentId: String, pageId: String): File {
         val dir = File(context.filesDir, "documents/$documentId").apply { mkdirs() }
         return File(dir, "page_${pageId}_${UUID.randomUUID()}.jpg")
@@ -203,6 +226,7 @@ class DocumentRepository @Inject constructor(
     private fun toDomain(e: DocumentEntity) = Document(
         id = e.id, name = e.name, pageCount = e.pageCount, sizeBytes = e.sizeBytes,
         format = e.format, syncState = e.syncState, filePath = e.filePath, createdAt = e.createdAt,
+        ocrText = e.ocrText,
     )
 
     private fun toPage(e: PageEntity) = Page(id = e.id, orderIndex = e.orderIndex, imagePath = e.imagePath)
