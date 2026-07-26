@@ -3,6 +3,7 @@ package com.docscan.pro.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.docscan.pro.data.DocumentRepository
+import com.docscan.pro.domain.CompressionLevel
 import com.docscan.pro.domain.Document
 import com.docscan.pro.feature.scan.ScannedPages
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -40,6 +41,10 @@ class HomeViewModel @Inject constructor(
 
     fun rename(documentId: String, name: String) {
         viewModelScope.launch { repository.rename(documentId, name) }
+    }
+
+    fun compress(documentId: String, level: CompressionLevel) {
+        viewModelScope.launch { repository.compressDocument(documentId, level) }
     }
 
     fun delete(documentId: String) {

@@ -5,10 +5,12 @@ import android.net.Uri
 import com.docscan.pro.data.local.DocumentDao
 import com.docscan.pro.data.local.DocumentEntity
 import com.docscan.pro.data.local.PageEntity
+import com.docscan.pro.domain.CompressionLevel
 import com.docscan.pro.domain.Document
 import com.docscan.pro.domain.Page
 import com.docscan.pro.feature.scan.ScannedPages
 import com.docscan.pro.util.buildPdf
+import com.docscan.pro.util.compressImage
 import com.docscan.pro.util.decodeSampled
 import com.docscan.pro.util.eraseImage
 import com.docscan.pro.util.recognizeText
@@ -165,6 +167,18 @@ class DocumentRepository @Inject constructor(
         eraseImage(page.imagePath, dst.absolutePath, strokes, displayW, displayH, brushPx)
         dao.updatePages(listOf(page.copy(imagePath = dst.absolutePath, updatedAt = System.currentTimeMillis())))
     }
+
+    /** Re-encodes every page at the chosen level, shrinking the PDF. FR-4.7 */
+    suspend fun compressDocument(documentId: String, level: CompressionLevel): Result<Unit> =
+        edit(documentId) {
+            val now = System.currentTimeMillis()
+            val updated = dao.getPages(documentId).map { page ->
+                val dst = versionedFile(documentId, page.id)
+                compressImage(page.imagePath, dst.absolutePath, level.maxEdge, level.quality)
+                page.copy(imagePath = dst.absolutePath, updatedAt = now)
+            }
+            dao.updatePages(updated)
+        }
 
     /** Restores the page set to a previous snapshot (undo/redo). FR-E.7 */
     suspend fun restorePages(documentId: String, pages: List<Page>): Result<Unit> = edit(documentId) {
