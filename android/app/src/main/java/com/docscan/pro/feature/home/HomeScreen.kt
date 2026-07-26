@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudOff
@@ -32,10 +33,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -52,6 +51,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +59,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,12 +72,14 @@ import com.docscan.pro.domain.Document
 import com.docscan.pro.feature.scan.ScannedPages
 import com.docscan.pro.feature.scan.rememberScanLauncher
 
-private enum class Screen { Home, Search, Documents, Account }
+private enum class Screen { Home, Search, Documents }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onOpenDocument: (String) -> Unit,
+    onAccount: () -> Unit,
+    onTools: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -103,13 +108,16 @@ fun HomeScreen(
                         when (screen) {
                             Screen.Documents -> "Documents"
                             Screen.Search -> "Search"
-                            Screen.Account -> "Account"
                             else -> "DocScan Pro"
                         },
                     )
                 },
                 navigationIcon = {
-                    if (screen == Screen.Search || screen == Screen.Documents) {
+                    if (screen == Screen.Home) {
+                        IconButton(onClick = onAccount) {
+                            Icon(Icons.Filled.Person, contentDescription = "Account")
+                        }
+                    } else {
                         TextButton(onClick = { screen = Screen.Home }) { Text("Back") }
                     }
                 },
@@ -117,10 +125,9 @@ fun HomeScreen(
         },
         bottomBar = {
             HomeBottomBar(
-                selected = if (screen == Screen.Account) 1 else 0,
                 onHome = { screen = Screen.Home },
                 onScan = launchScan,
-                onAccount = { screen = Screen.Account },
+                onTools = onTools,
             )
         },
     ) { padding ->
@@ -137,7 +144,6 @@ fun HomeScreen(
                 )
                 Screen.Search -> SearchContent(state.documents, onOpenDocument, viewModel::rename, viewModel::compress, viewModel::delete)
                 Screen.Documents -> DocumentsContent(state.documents, onOpenDocument, viewModel::rename, viewModel::compress, viewModel::delete)
-                Screen.Account -> AccountTab()
             }
         }
     }
@@ -218,6 +224,8 @@ private fun SearchContent(
     onDelete: (String) -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
     val results = if (query.isBlank()) {
         documents
     } else {
@@ -235,7 +243,7 @@ private fun SearchContent(
             singleLine = true,
             leadingIcon = { Icon(Icons.Filled.Search, null) },
             placeholder = { Text("Search name or text inside") },
-            modifier = Modifier.fillMaxWidth().padding(16.dp, 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp, 12.dp).focusRequester(focusRequester),
         )
         if (results.isEmpty()) {
             ComingSoon(Icons.Filled.Search, "No matches", "No document name or scanned text matches that.")
@@ -407,10 +415,9 @@ private fun RenameDialog(current: String, onDismiss: () -> Unit, onConfirm: (Str
 
 @Composable
 private fun HomeBottomBar(
-    selected: Int,
     onHome: () -> Unit,
     onScan: () -> Unit,
-    onAccount: () -> Unit,
+    onTools: () -> Unit,
 ) {
     Column(Modifier.background(MaterialTheme.colorScheme.surface).navigationBarsPadding()) {
         HorizontalDivider()
@@ -418,7 +425,7 @@ private fun HomeBottomBar(
             Modifier.fillMaxWidth().height(76.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            NavTab(Modifier.weight(1f), Icons.Filled.Home, "Home", selected == 0, onHome)
+            NavTab(Modifier.weight(1f), Icons.Filled.Home, "Home", true, onHome)
             Column(
                 Modifier.weight(1f).clickable(onClick = onScan),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -438,7 +445,15 @@ private fun HomeBottomBar(
                 Spacer(Modifier.height(2.dp))
                 Text("Scan", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             }
-            NavTab(Modifier.weight(1f), Icons.Filled.Person, "Account", selected == 1, onAccount)
+            // Multi-tool hub — colorful to stand out.
+            Column(
+                Modifier.weight(1f).clickable(onClick = onTools),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(Icons.Filled.AutoAwesome, "Tools", tint = Color(0xFF7C4DFF))
+                Text("Tools", style = MaterialTheme.typography.labelSmall, color = Color(0xFF7C4DFF))
+            }
         }
     }
 }
@@ -492,42 +507,6 @@ private fun ComingSoon(icon: ImageVector, title: String, body: String) {
         Text(title, style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(4.dp))
         Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AccountTab() {
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(
-                Modifier.size(52.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.Person, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
-            }
-            Column {
-                Text("Guest", style = MaterialTheme.typography.titleMedium)
-                Text("Not signed in", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        ListItem(
-            headlineContent = { Text("Free plan") },
-            supportingContent = { Text("Upgrade to Pro in a later update") },
-            leadingContent = { Icon(Icons.Filled.CheckCircle, null) },
-        )
-        ListItem(
-            headlineContent = { Text("Cloud backup") },
-            supportingContent = { Text("Connect Google Drive — coming soon") },
-            leadingContent = { Icon(Icons.Filled.CloudOff, null) },
-        )
-        ListItem(
-            headlineContent = { Text("Settings") },
-            leadingContent = { Icon(Icons.Filled.Settings, null) },
-        )
-        Spacer(Modifier.height(8.dp))
-        Button(onClick = { }, modifier = Modifier.fillMaxWidth()) { Text("Sign in") }
     }
 }
 
