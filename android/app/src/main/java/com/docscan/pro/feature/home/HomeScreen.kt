@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -65,6 +66,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.docscan.pro.domain.CompressionLevel
 import com.docscan.pro.domain.Document
+import com.docscan.pro.feature.scan.ScannedPages
 import com.docscan.pro.feature.scan.rememberScanLauncher
 
 private enum class Screen { Home, Search, Documents, Account }
@@ -77,9 +79,21 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var screen by remember { mutableStateOf(Screen.Home) }
-    val launchScan = rememberScanLauncher(onScanned = viewModel::onScanned)
+    var pendingScan by remember { mutableStateOf<ScannedPages?>(null) }
+    val launchScan = rememberScanLauncher(onScanned = { scan ->
+        if (scan.pageUris.isNotEmpty()) pendingScan = scan
+    })
 
     if (screen != Screen.Home) BackHandler { screen = Screen.Home }
+
+    val scan = pendingScan
+    if (scan != null) {
+        NameScanDialog(
+            default = remember(scan) { viewModel.defaultName() },
+            onDismiss = { pendingScan = null },
+            onSave = { name -> viewModel.save(name, scan); pendingScan = null },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -350,6 +364,29 @@ private fun CompressDialog(onDismiss: () -> Unit, onPick: (CompressionLevel) -> 
 }
 
 @Composable
+private fun NameScanDialog(default: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var text by remember { mutableStateOf(default) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Save document") },
+        text = {
+            Column {
+                Text("Name your PDF (optional).", style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    singleLine = true,
+                    label = { Text("Name") },
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(text) }) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Discard") } },
+    )
+}
+
+@Composable
 private fun RenameDialog(current: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
     var text by remember(current) { mutableStateOf(current) }
     AlertDialog(
@@ -375,10 +412,10 @@ private fun HomeBottomBar(
     onScan: () -> Unit,
     onAccount: () -> Unit,
 ) {
-    Column {
+    Column(Modifier.background(MaterialTheme.colorScheme.surface).navigationBarsPadding()) {
         HorizontalDivider()
         Row(
-            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).height(76.dp),
+            Modifier.fillMaxWidth().height(76.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             NavTab(Modifier.weight(1f), Icons.Filled.Home, "Home", selected == 0, onHome)

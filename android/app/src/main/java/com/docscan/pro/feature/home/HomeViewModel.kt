@@ -32,12 +32,16 @@ class HomeViewModel @Inject constructor(
             .map { HomeUiState(isLoading = false, documents = it) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
-    fun onScanned(scan: ScannedPages) {
+    /** Saves a freshly scanned document under [name] (falls back to a default if blank). */
+    fun save(name: String, scan: ScannedPages) {
         if (scan.pageUris.isEmpty()) return
         viewModelScope.launch {
-            repository.saveScannedDocument(defaultName(), scan)
+            repository.saveScannedDocument(name.trim().ifBlank { defaultName() }, scan)
         }
     }
+
+    fun defaultName(): String =
+        "Scan " + SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
 
     fun rename(documentId: String, name: String) {
         viewModelScope.launch { repository.rename(documentId, name) }
@@ -50,7 +54,4 @@ class HomeViewModel @Inject constructor(
     fun delete(documentId: String) {
         viewModelScope.launch { repository.delete(documentId) }
     }
-
-    private fun defaultName(): String =
-        "Scan " + SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
 }

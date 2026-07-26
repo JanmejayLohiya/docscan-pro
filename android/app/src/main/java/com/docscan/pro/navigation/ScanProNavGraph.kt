@@ -8,8 +8,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.docscan.pro.feature.editor.EditorScreen
 import com.docscan.pro.feature.home.HomeScreen
+import com.docscan.pro.feature.splash.SplashScreen
 
 object Routes {
+    const val SPLASH = "splash"
     const val HOME = "home"
     const val EDITOR = "editor/{documentId}"
     fun editor(documentId: String) = "editor/$documentId"
@@ -18,7 +20,14 @@ object Routes {
 @Composable
 fun ScanProNavGraph() {
     val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = Routes.HOME) {
+    NavHost(navController = nav, startDestination = Routes.SPLASH) {
+        composable(Routes.SPLASH) {
+            SplashScreen(onFinished = {
+                nav.navigate(Routes.HOME) {
+                    popUpTo(Routes.SPLASH) { inclusive = true }
+                }
+            })
+        }
         composable(Routes.HOME) {
             HomeScreen(onOpenDocument = { id -> nav.navigate(Routes.editor(id)) })
         }
