@@ -55,6 +55,21 @@ fun scaleImage(srcPath: String, dstPath: String, maxEdge: Int) {
     out.recycle()
 }
 
+/** Re-encodes [srcPath] to [dstPath], capping the longest edge at [maxEdge] and using JPEG [quality]. */
+fun compressImage(srcPath: String, dstPath: String, maxEdge: Int, quality: Int) {
+    val src = BitmapFactory.decodeFile(srcPath) ?: return
+    val longEdge = maxOf(src.width, src.height)
+    val out = if (longEdge <= maxEdge) {
+        src
+    } else {
+        val ratio = maxEdge.toFloat() / longEdge
+        Bitmap.createScaledBitmap(src, (src.width * ratio).toInt(), (src.height * ratio).toInt(), true)
+    }
+    FileOutputStream(dstPath).use { out.compress(Bitmap.CompressFormat.JPEG, quality, it) }
+    if (out != src) src.recycle()
+    out.recycle()
+}
+
 /** Rotates [srcPath] by [degrees] and writes the result to [dstPath] (non-destructive). */
 fun rotateImage(srcPath: String, dstPath: String, degrees: Int) {
     val src = BitmapFactory.decodeFile(srcPath) ?: return

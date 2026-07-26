@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Edit
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.docscan.pro.domain.CompressionLevel
 import com.docscan.pro.domain.Document
 import com.docscan.pro.feature.scan.rememberScanLauncher
 
@@ -114,12 +116,13 @@ fun HomeScreen(
                     state = state,
                     onOpen = onOpenDocument,
                     onRename = viewModel::rename,
+                    onCompress = viewModel::compress,
                     onDelete = viewModel::delete,
                     onSearch = { screen = Screen.Search },
                     onDocuments = { screen = Screen.Documents },
                 )
-                Screen.Search -> SearchContent(state.documents, onOpenDocument, viewModel::rename, viewModel::delete)
-                Screen.Documents -> DocumentsContent(state.documents, onOpenDocument, viewModel::rename, viewModel::delete)
+                Screen.Search -> SearchContent(state.documents, onOpenDocument, viewModel::rename, viewModel::compress, viewModel::delete)
+                Screen.Documents -> DocumentsContent(state.documents, onOpenDocument, viewModel::rename, viewModel::compress, viewModel::delete)
                 Screen.Account -> AccountTab()
             }
         }
@@ -131,6 +134,7 @@ private fun HomeContent(
     state: HomeUiState,
     onOpen: (String) -> Unit,
     onRename: (String, String) -> Unit,
+    onCompress: (String, CompressionLevel) -> Unit,
     onDelete: (String) -> Unit,
     onSearch: () -> Unit,
     onDocuments: () -> Unit,
@@ -182,7 +186,7 @@ private fun HomeContent(
                 ComingSoon(Icons.Filled.DocumentScanner, "No documents yet", "Tap Scan to capture your first document.")
             else -> LazyColumn(Modifier.fillMaxSize()) {
                 items(state.documents.take(3), key = { it.id }) { doc ->
-                    DocumentRow(doc, onOpen, onRename, onDelete)
+                    DocumentRow(doc, onOpen, onRename, onCompress, onDelete)
                     HorizontalDivider()
                 }
             }
@@ -196,6 +200,7 @@ private fun SearchContent(
     documents: List<Document>,
     onOpen: (String) -> Unit,
     onRename: (String, String) -> Unit,
+    onCompress: (String, CompressionLevel) -> Unit,
     onDelete: (String) -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
@@ -223,7 +228,7 @@ private fun SearchContent(
         } else {
             LazyColumn(Modifier.fillMaxSize()) {
                 items(results, key = { it.id }) { doc ->
-                    DocumentRow(doc, onOpen, onRename, onDelete)
+                    DocumentRow(doc, onOpen, onRename, onCompress, onDelete)
                     HorizontalDivider()
                 }
             }
@@ -236,6 +241,7 @@ private fun DocumentsContent(
     documents: List<Document>,
     onOpen: (String) -> Unit,
     onRename: (String, String) -> Unit,
+    onCompress: (String, CompressionLevel) -> Unit,
     onDelete: (String) -> Unit,
 ) {
     if (documents.isEmpty()) {
@@ -243,7 +249,7 @@ private fun DocumentsContent(
     } else {
         LazyColumn(Modifier.fillMaxSize()) {
             items(documents, key = { it.id }) { doc ->
-                DocumentRow(doc, onOpen, onRename, onDelete)
+                DocumentRow(doc, onOpen, onRename, onCompress, onDelete)
                 HorizontalDivider()
             }
         }
@@ -256,10 +262,12 @@ private fun DocumentRow(
     doc: Document,
     onOpen: (String) -> Unit,
     onRename: (String, String) -> Unit,
+    onCompress: (String, CompressionLevel) -> Unit,
     onDelete: (String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var showRename by remember { mutableStateOf(false) }
+    var showCompress by remember { mutableStateOf(false) }
 
     ListItem(
         modifier = Modifier.clickable { onOpen(doc.id) },
@@ -288,6 +296,11 @@ private fun DocumentRow(
                             onClick = { showRename = true; menuOpen = false },
                         )
                         DropdownMenuItem(
+                            text = { Text("Compress") },
+                            leadingIcon = { Icon(Icons.Filled.Compress, null) },
+                            onClick = { showCompress = true; menuOpen = false },
+                        )
+                        DropdownMenuItem(
                             text = { Text("Delete") },
                             leadingIcon = { Icon(Icons.Filled.Delete, null) },
                             onClick = { onDelete(doc.id); menuOpen = false },
@@ -306,6 +319,34 @@ private fun DocumentRow(
             onConfirm = { name -> onRename(doc.id, name); showRename = false },
         )
     }
+    if (showCompress) {
+        CompressDialog(
+            onDismiss = { showCompress = false },
+            onPick = { level -> onCompress(doc.id, level); showCompress = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CompressDialog(onDismiss: () -> Unit, onPick: (CompressionLevel) -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Compress PDF") },
+        text = {
+            Column {
+                CompressionLevel.entries.forEach { level ->
+                    ListItem(
+                        modifier = Modifier.clickable { onPick(level) },
+                        headlineContent = { Text(level.label) },
+                        supportingContent = { Text(level.description) },
+                        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+                    )
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
