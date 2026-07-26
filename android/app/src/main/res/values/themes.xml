@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.ScanPro" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Launch splash: app logo on the brand indigo, then hands off to the app theme. -->
+    <style name="Theme.ScanPro.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.ScanPro</item>
+    </style>
 </resources>
