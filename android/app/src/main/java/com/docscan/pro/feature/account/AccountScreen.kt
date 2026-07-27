@@ -52,7 +52,7 @@ fun AccountScreen(
     onSignIn: () -> Unit,
     viewModel: AccountViewModel = hiltViewModel(),
 ) {
-    val profile by viewModel.profile.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -75,13 +75,13 @@ fun AccountScreen(
                 ) { Icon(Icons.Filled.Person, null, tint = MaterialTheme.colorScheme.onPrimaryContainer) }
                 Column(Modifier.weight(1f)) {
                     Text(
-                        profile.name.ifBlank { if (profile.signedIn) "Signed in" else "Guest" },
+                        state.name.ifBlank { if (state.signedIn) "Signed in" else "Guest" },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                     )
                     val subtitle = when {
-                        profile.email.isNotBlank() -> profile.email
-                        profile.phone.isNotBlank() -> profile.phone
+                        state.identifier.isNotBlank() -> state.identifier
+                        state.signedIn -> "Signed in"
                         else -> "Not signed in"
                     }
                     Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -89,7 +89,7 @@ fun AccountScreen(
                 IconButton(onClick = { editing = true }) { Icon(Icons.Filled.Edit, contentDescription = "Edit profile") }
             }
 
-            if (profile.signedIn) {
+            if (state.signedIn) {
                 OutlinedButton(onClick = viewModel::signOut, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                     Text("Sign out")
                 }
@@ -110,7 +110,7 @@ fun AccountScreen(
             ListItem(
                 leadingContent = { Icon(Icons.Filled.CloudOff, null) },
                 headlineContent = { Text("Cloud backup") },
-                supportingContent = { Text("Connect Google Drive — coming soon") },
+                supportingContent = { Text("Sync scans across devices — coming soon") },
             )
             ListItem(
                 leadingContent = { Icon(Icons.Filled.DarkMode, null) },
@@ -127,8 +127,8 @@ fun AccountScreen(
 
     if (editing) {
         EditProfileDialog(
-            initialName = profile.name,
-            initialEmail = profile.email,
+            initialName = state.name,
+            initialEmail = state.email,
             onDismiss = { editing = false },
             onSave = { name, email -> viewModel.updateInfo(name, email); editing = false },
         )
