@@ -33,6 +33,13 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      # google-services.json is not committed (kept out of the public repo).
+      # Store its base64 as the GOOGLE_SERVICES_JSON repo secret; CI recreates it.
+      - name: Add Firebase config
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: echo "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
+
       # No gradle-wrapper.jar is committed, so generate a pinned wrapper using
       # the Gradle preinstalled on the runner. This keeps the repo free of the
       # binary jar while still building against a fixed Gradle version.
