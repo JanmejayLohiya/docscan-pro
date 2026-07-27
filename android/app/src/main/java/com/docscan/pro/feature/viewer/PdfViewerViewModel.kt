@@ -25,6 +25,7 @@ import javax.inject.Inject
 data class PdfViewerUiState(
     val title: String = "",
     val filePath: String = "",
+    val ocrText: String = "",
     val pages: List<Bitmap> = emptyList(),
     val loading: Boolean = true,
 )
@@ -42,7 +43,7 @@ class PdfViewerViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             val doc = repository.observeDocument(documentId).filterNotNull().first()
-            _state.update { it.copy(title = doc.name, filePath = doc.filePath) }
+            _state.update { it.copy(title = doc.name, filePath = doc.filePath, ocrText = doc.ocrText.orEmpty()) }
             val pages = withContext(Dispatchers.IO) { renderPdf(doc.filePath) }
             _state.update { it.copy(loading = false, pages = pages) }
         }

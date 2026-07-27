@@ -11,13 +11,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -85,6 +89,8 @@ fun PdfViewerScreen(
     val context = LocalContext.current
     var theme by remember { mutableStateOf(ViewerTheme.Light) }
     var themeMenu by remember { mutableStateOf(false) }
+    var searching by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -92,6 +98,9 @@ fun PdfViewerScreen(
                 title = { Text(state.title.ifBlank { "Document" }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
                 actions = {
+                    IconButton(onClick = { searching = !searching }) {
+                        Icon(Icons.Filled.Search, contentDescription = "Search in document")
+                    }
                     Box {
                         IconButton(onClick = { themeMenu = true }) {
                             Icon(Icons.Filled.Palette, contentDescription = "Reading theme")
@@ -113,30 +122,75 @@ fun PdfViewerScreen(
             )
         },
     ) { padding ->
-        Box(
-            Modifier.fillMaxSize().padding(padding).background(theme.background),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (state.loading) {
-                CircularProgressIndicator()
-            } else if (state.pages.isEmpty()) {
-                Text("Couldn't open this document.", Modifier.padding(24.dp))
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(state.pages) { bmp ->
-                        Image(
-                            bitmap = bmp.asImageBitmap(),
-                            contentDescription = null,
-                            contentScale = ContentScale.FillWidth,
-                            colorFilter = theme.filter,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+        val showResults = searching && query.isNotBlank()
+        androidx.compose.foundation.layout.Column(Modifier.fillMaxSize().padding(padding)) {
+            if (searching) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Filled.Search, null) },
+                    placeholder = { Text("Search this document") },
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                )
+                HorizontalDivider()
+            }
+            val bg = if (showResults) MaterialTheme.colorScheme.surface else theme.background
+            Box(Modifier.fillMaxSize().background(bg), contentAlignment = Alignment.Center) {
+                when {
+                    state.loading -> CircularProgressIndicator()
+                    showResults -> {
+                        val matches = remember(query, state.ocrText) { searchSnippets(state.ocrText, query) }
+                        if (matches.isEmpty()) {
+                            Text("No matches in this document.", Modifier.padding(24.dp))
+                        } else {
+                            LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                                item {
+                                    Text(
+                                        "${matches.size} match${if (matches.size == 1) "" else "es"}",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        modifier = Modifier.padding(vertical = 10.dp),
+                                    )
+                                }
+                                items(matches) { snippet ->
+                                    Text(snippet, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 10.dp))
+                                    HorizontalDivider()
+                                }
+                            }
+                        }
+                    }
+                    state.pages.isEmpty() -> Text("Couldn't open this document.", Modifier.padding(24.dp))
+                    else -> LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(state.pages) { bmp ->
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = null,
+                                contentScale = ContentScale.FillWidth,
+                                colorFilter = theme.filter,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+/** Returns context snippets around each occurrence of [query] in [text] (case-insensitive). */
+private fun searchSnippets(text: String, query: String): List<String> {
+    val q = query.trim()
+    if (q.isEmpty()) return emptyList()
+    val out = mutableListOf<String>()
+    var i = text.indexOf(q, 0, ignoreCase = true)
+    while (i >= 0 && out.size < 100) {
+        val start = (i - 30).coerceAtLeast(0)
+        val end = (i + q.length + 30).coerceAtMost(text.length)
+        out.add("…" + text.substring(start, end).replace('\n', ' ').trim() + "…")
+        i = text.indexOf(q, i + q.length, ignoreCase = true)
+    }
+    return out
 }

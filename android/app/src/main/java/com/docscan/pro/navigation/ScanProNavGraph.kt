@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.docscan.pro.feature.account.AccountScreen
+import com.docscan.pro.feature.account.AuthScreen
 import com.docscan.pro.feature.editor.EditorScreen
 import com.docscan.pro.feature.home.HomeScreen
 import com.docscan.pro.feature.splash.SplashScreen
@@ -18,6 +19,7 @@ object Routes {
     const val SPLASH = "splash"
     const val HOME = "home"
     const val ACCOUNT = "account"
+    const val AUTH = "auth"
     const val TOOLS = "tools"
     const val EDIT_PICK = "editpick"
     const val VIEWER = "viewer/{documentId}"
@@ -51,7 +53,13 @@ fun ScanProNavGraph() {
             EditorScreen(onBack = { nav.popBackStack() })
         }
         composable(Routes.ACCOUNT) {
-            AccountScreen(onBack = { nav.popBackStack() })
+            AccountScreen(
+                onBack = { nav.popBackStack() },
+                onSignIn = { nav.navigate(Routes.AUTH) },
+            )
+        }
+        composable(Routes.AUTH) {
+            AuthScreen(onDone = { nav.popBackStack() })
         }
         composable(Routes.TOOLS) {
             ToolsScreen(

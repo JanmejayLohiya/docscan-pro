@@ -19,12 +19,14 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -47,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun AccountScreen(
     onBack: () -> Unit,
+    onSignIn: () -> Unit,
     viewModel: AccountViewModel = hiltViewModel(),
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
@@ -61,7 +64,6 @@ fun AccountScreen(
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            // Profile header
             Row(
                 Modifier.fillMaxWidth().padding(20.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -73,26 +75,37 @@ fun AccountScreen(
                 ) { Icon(Icons.Filled.Person, null, tint = MaterialTheme.colorScheme.onPrimaryContainer) }
                 Column(Modifier.weight(1f)) {
                     Text(
-                        profile.name.ifBlank { "Guest" },
+                        profile.name.ifBlank { if (profile.signedIn) "Signed in" else "Guest" },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                     )
-                    Text(
-                        profile.email.ifBlank { "Add your details" },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    val subtitle = when {
+                        profile.email.isNotBlank() -> profile.email
+                        profile.phone.isNotBlank() -> profile.phone
+                        else -> "Not signed in"
+                    }
+                    Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = { editing = true }) { Icon(Icons.Filled.Edit, contentDescription = "Edit profile") }
             }
-            HorizontalDivider()
 
-            Spacer(Modifier.height(8.dp))
+            if (profile.signedIn) {
+                OutlinedButton(onClick = viewModel::signOut, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                    Text("Sign out")
+                }
+            } else {
+                Button(onClick = onSignIn, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                    Text("Sign in or create account")
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider()
             Text(
                 "Settings",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             ListItem(
                 leadingContent = { Icon(Icons.Filled.CloudOff, null) },
@@ -117,7 +130,7 @@ fun AccountScreen(
             initialName = profile.name,
             initialEmail = profile.email,
             onDismiss = { editing = false },
-            onSave = { name, email -> viewModel.save(name, email); editing = false },
+            onSave = { name, email -> viewModel.updateInfo(name, email); editing = false },
         )
     }
 }
