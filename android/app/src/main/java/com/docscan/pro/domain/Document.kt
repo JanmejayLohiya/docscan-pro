@@ -11,4 +11,5 @@ data class Document(
     val filePath: String,
     val createdAt: Long,
     val ocrText: String? = null,
+    val folderId: String? = null,
 )

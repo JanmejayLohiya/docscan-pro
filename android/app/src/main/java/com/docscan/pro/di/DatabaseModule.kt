@@ -23,11 +23,24 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS folders (" +
+                    "id TEXT NOT NULL PRIMARY KEY, " +
+                    "name TEXT NOT NULL, " +
+                    "created_at INTEGER NOT NULL, " +
+                    "updated_at INTEGER NOT NULL, " +
+                    "deleted_at INTEGER)",
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): ScanProDatabase =
         Room.databaseBuilder(context, ScanProDatabase::class.java, "scanpro.db")
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 
     @Provides

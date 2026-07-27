@@ -50,6 +50,16 @@ interface DocumentDao {
     @Query("UPDATE documents SET name = :name, updated_at = :now WHERE id = :id")
     suspend fun renameDocument(id: String, name: String, now: Long)
 
+    // ---- Folders ----
+    @Query("SELECT * FROM folders WHERE deleted_at IS NULL ORDER BY name")
+    fun observeFolders(): Flow<List<FolderEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFolder(folder: FolderEntity)
+
+    @Query("UPDATE documents SET folder_id = :folderId, updated_at = :now WHERE id = :id")
+    suspend fun moveDocument(id: String, folderId: String?, now: Long)
+
     @Query("UPDATE documents SET deleted_at = :now, updated_at = :now WHERE id = :id")
     suspend fun softDelete(id: String, now: Long)
 

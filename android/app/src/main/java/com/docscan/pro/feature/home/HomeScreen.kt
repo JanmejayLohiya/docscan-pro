@@ -3,6 +3,8 @@ package com.docscan.pro.feature.home
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,7 +37,9 @@ import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -69,6 +73,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.docscan.pro.domain.CompressionLevel
 import com.docscan.pro.domain.Document
+import com.docscan.pro.domain.Folder
 import com.docscan.pro.feature.scan.ScannedPages
 import com.docscan.pro.feature.scan.rememberScanLauncher
 
@@ -95,8 +100,12 @@ fun HomeScreen(
     if (scan != null) {
         NameScanDialog(
             default = remember(scan) { viewModel.defaultName() },
+            folders = state.folders,
             onDismiss = { pendingScan = null },
-            onSave = { name -> viewModel.save(name, scan); pendingScan = null },
+            onSave = { name, folderId, newFolder ->
+                viewModel.save(name, folderId, newFolder, scan)
+                pendingScan = null
+            },
         )
     }
 
@@ -143,7 +152,16 @@ fun HomeScreen(
                     onDocuments = { screen = Screen.Documents },
                 )
                 Screen.Search -> SearchContent(state.documents, onOpenDocument, viewModel::rename, viewModel::compress, viewModel::delete)
-                Screen.Documents -> DocumentsContent(state.documents, onOpenDocument, viewModel::rename, viewModel::compress, viewModel::delete)
+                Screen.Documents -> DocumentsContent(
+                    documents = state.documents,
+                    folders = state.folders,
+                    onOpen = onOpenDocument,
+                    onRename = viewModel::rename,
+                    onCompress = viewModel::compress,
+                    onDelete = viewModel::delete,
+                    onMove = viewModel::move,
+                    onCreateFolder = viewModel::createFolder,
+                )
             }
         }
     }
@@ -258,23 +276,52 @@ private fun SearchContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DocumentsContent(
     documents: List<Document>,
+    folders: List<Folder>,
     onOpen: (String) -> Unit,
     onRename: (String, String) -> Unit,
     onCompress: (String, CompressionLevel) -> Unit,
     onDelete: (String) -> Unit,
+    onMove: (String, String?) -> Unit,
+    onCreateFolder: (String) -> Unit,
 ) {
-    if (documents.isEmpty()) {
-        ComingSoon(Icons.Filled.Folder, "No documents yet", "Scanned PDFs are stored here.")
-    } else {
-        LazyColumn(Modifier.fillMaxSize()) {
-            items(documents, key = { it.id }) { doc ->
-                DocumentRow(doc, onOpen, onRename, onCompress, onDelete)
-                HorizontalDivider()
+    var selected by remember { mutableStateOf("ALL") } // ALL | UNFILED | <folderId>
+    var showNewFolder by remember { mutableStateOf(false) }
+
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(selected == "ALL", { selected = "ALL" }, { Text("All") })
+            FilterChip(selected == "UNFILED", { selected = "UNFILED" }, { Text("Unfiled") })
+            folders.forEach { f -> FilterChip(selected == f.id, { selected = f.id }, { Text(f.name) }) }
+            AssistChip(onClick = { showNewFolder = true }, label = { Text("New folder") })
+        }
+
+        val filtered = when (selected) {
+            "ALL" -> documents
+            "UNFILED" -> documents.filter { it.folderId == null }
+            else -> documents.filter { it.folderId == selected }
+        }
+
+        if (filtered.isEmpty()) {
+            ComingSoon(Icons.Filled.Folder, "Nothing here", "Scan a document or move one into this folder.")
+        } else {
+            LazyColumn(Modifier.fillMaxSize()) {
+                items(filtered, key = { it.id }) { doc ->
+                    DocumentRow(doc, onOpen, onRename, onCompress, onDelete, onMove = onMove, folders = folders)
+                    HorizontalDivider()
+                }
             }
         }
+    }
+
+    if (showNewFolder) {
+        NewFolderDialog(onDismiss = { showNewFolder = false }, onCreate = { name -> onCreateFolder(name); showNewFolder = false })
     }
 }
 
@@ -286,10 +333,13 @@ private fun DocumentRow(
     onRename: (String, String) -> Unit,
     onCompress: (String, CompressionLevel) -> Unit,
     onDelete: (String) -> Unit,
+    onMove: ((String, String?) -> Unit)? = null,
+    folders: List<Folder> = emptyList(),
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var showRename by remember { mutableStateOf(false) }
     var showCompress by remember { mutableStateOf(false) }
+    var showMove by remember { mutableStateOf(false) }
 
     ListItem(
         modifier = Modifier.clickable { onOpen(doc.id) },
@@ -322,6 +372,13 @@ private fun DocumentRow(
                             leadingIcon = { Icon(Icons.Filled.Compress, null) },
                             onClick = { showCompress = true; menuOpen = false },
                         )
+                        if (onMove != null) {
+                            DropdownMenuItem(
+                                text = { Text("Move to folder") },
+                                leadingIcon = { Icon(Icons.Filled.Folder, null) },
+                                onClick = { showMove = true; menuOpen = false },
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text("Delete") },
                             leadingIcon = { Icon(Icons.Filled.Delete, null) },
@@ -347,6 +404,54 @@ private fun DocumentRow(
             onPick = { level -> onCompress(doc.id, level); showCompress = false },
         )
     }
+    if (showMove && onMove != null) {
+        MoveDialog(
+            folders = folders,
+            onDismiss = { showMove = false },
+            onPick = { folderId -> onMove(doc.id, folderId); showMove = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MoveDialog(folders: List<Folder>, onDismiss: () -> Unit, onPick: (String?) -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Move to folder") },
+        text = {
+            Column {
+                ListItem(
+                    modifier = Modifier.clickable { onPick(null) },
+                    headlineContent = { Text("Default (Unfiled)") },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+                )
+                folders.forEach { f ->
+                    ListItem(
+                        modifier = Modifier.clickable { onPick(f.id) },
+                        headlineContent = { Text(f.name) },
+                        leadingContent = { Icon(Icons.Filled.Folder, null) },
+                        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+                    )
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun NewFolderDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New folder") },
+        text = {
+            OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true, label = { Text("Folder name") })
+        },
+        confirmButton = { TextButton(onClick = { onCreate(name) }, enabled = name.isNotBlank()) { Text("Create") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -371,25 +476,70 @@ private fun CompressDialog(onDismiss: () -> Unit, onPick: (CompressionLevel) -> 
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NameScanDialog(default: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+private fun NameScanDialog(
+    default: String,
+    folders: List<Folder>,
+    onDismiss: () -> Unit,
+    onSave: (name: String, folderId: String?, newFolderName: String?) -> Unit,
+) {
     var text by remember { mutableStateOf(default) }
+    var selectedFolderId by remember { mutableStateOf<String?>(null) }
+    var creatingNew by remember { mutableStateOf(false) }
+    var newFolderName by remember { mutableStateOf("") }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Save document") },
         text = {
             Column {
-                Text("Name your PDF (optional).", style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
                     singleLine = true,
                     label = { Text("Name") },
                 )
+                Spacer(Modifier.height(12.dp))
+                Text("Folder", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = selectedFolderId == null && !creatingNew,
+                        onClick = { selectedFolderId = null; creatingNew = false },
+                        label = { Text("Default") },
+                    )
+                    folders.forEach { f ->
+                        FilterChip(
+                            selected = selectedFolderId == f.id && !creatingNew,
+                            onClick = { selectedFolderId = f.id; creatingNew = false },
+                            label = { Text(f.name) },
+                        )
+                    }
+                    FilterChip(selected = creatingNew, onClick = { creatingNew = true }, label = { Text("New…") })
+                }
+                if (creatingNew) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = newFolderName,
+                        onValueChange = { newFolderName = it },
+                        singleLine = true,
+                        label = { Text("New folder name") },
+                    )
+                }
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(text) }) { Text("Save") } },
+        confirmButton = {
+            TextButton(onClick = {
+                onSave(
+                    text,
+                    if (creatingNew) null else selectedFolderId,
+                    if (creatingNew) newFolderName else null,
+                )
+            }) { Text("Save") }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Discard") } },
     )
 }
