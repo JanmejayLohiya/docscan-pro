@@ -4,9 +4,11 @@ import android.content.Context
 import android.net.Uri
 import com.docscan.pro.data.local.DocumentDao
 import com.docscan.pro.data.local.DocumentEntity
+import com.docscan.pro.data.local.FolderEntity
 import com.docscan.pro.data.local.PageEntity
 import com.docscan.pro.domain.CompressionLevel
 import com.docscan.pro.domain.Document
+import com.docscan.pro.domain.Folder
 import com.docscan.pro.domain.Page
 import com.docscan.pro.feature.scan.ScannedPages
 import com.docscan.pro.util.buildPdf
@@ -48,8 +50,23 @@ class DocumentRepository @Inject constructor(
     fun observePages(documentId: String): Flow<List<Page>> =
         dao.observePages(documentId).map { list -> list.map(::toPage) }
 
+    fun observeFolders(): Flow<List<Folder>> =
+        dao.observeFolders().map { list -> list.map { Folder(it.id, it.name) } }
+
+    /** Creates a folder and returns its id. */
+    suspend fun createFolder(name: String): String {
+        val id = UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
+        dao.insertFolder(FolderEntity(id, name.trim().ifBlank { "Folder" }, now, now, null))
+        return id
+    }
+
+    /** Moves a document into a folder (null = default/Unfiled). */
+    suspend fun moveDocument(documentId: String, folderId: String?) =
+        dao.moveDocument(documentId, folderId, System.currentTimeMillis())
+
     // ---- Create ----
-    suspend fun saveScannedDocument(name: String, scan: ScannedPages): Result<String> =
+    suspend fun saveScannedDocument(name: String, folderId: String?, scan: ScannedPages): Result<String> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val id = UUID.randomUUID().toString()
@@ -74,7 +91,7 @@ class DocumentRepository @Inject constructor(
                 val document = DocumentEntity(
                     id = id, name = name, pageCount = pages.size, sizeBytes = sizeBytes,
                     format = "PDF", filePath = pdfFile.absolutePath, syncState = "LOCAL_ONLY",
-                    folderId = null, createdAt = now, updatedAt = now, deletedAt = null,
+                    folderId = folderId, createdAt = now, updatedAt = now, deletedAt = null,
                     ocrText = ocr,
                 )
                 dao.insertDocumentWithPages(document, pages)
@@ -240,7 +257,7 @@ class DocumentRepository @Inject constructor(
     private fun toDomain(e: DocumentEntity) = Document(
         id = e.id, name = e.name, pageCount = e.pageCount, sizeBytes = e.sizeBytes,
         format = e.format, syncState = e.syncState, filePath = e.filePath, createdAt = e.createdAt,
-        ocrText = e.ocrText,
+        ocrText = e.ocrText, folderId = e.folderId,
     )
 
     private fun toPage(e: PageEntity) = Page(id = e.id, orderIndex = e.orderIndex, imagePath = e.imagePath)
