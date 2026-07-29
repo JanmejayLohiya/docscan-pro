@@ -28,6 +28,12 @@ interface DocumentDao {
     @Query("SELECT * FROM pages WHERE document_id = :documentId ORDER BY order_index")
     suspend fun getPages(documentId: String): List<PageEntity>
 
+    @Query("SELECT * FROM documents WHERE deleted_at IS NULL")
+    suspend fun getAllDocuments(): List<DocumentEntity>
+
+    @Query("SELECT * FROM folders WHERE deleted_at IS NULL")
+    suspend fun getAllFolders(): List<FolderEntity>
+
     // ---- Writes ----
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDocument(document: DocumentEntity)

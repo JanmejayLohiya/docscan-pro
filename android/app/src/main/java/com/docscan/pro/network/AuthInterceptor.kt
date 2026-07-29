@@ -1,30 +1,21 @@
 package com.docscan.pro.network
 
+import com.docscan.pro.data.AuthRepository
+import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Supplies the current Firebase ID token. In production this is backed by
- * FirebaseAuth.getInstance().currentUser?.getIdToken(...). The scaffold uses a
- * settable holder so the app compiles and runs without Firebase wired up yet.
- */
-@Singleton
-class TokenProvider @Inject constructor() {
-    @Volatile
-    var token: String? = null
-}
-
-/** Attaches `Authorization: Bearer <firebase id token>` to every request. */
+/** Attaches the current Firebase ID token as `Authorization: Bearer <token>`. */
 @Singleton
 class AuthInterceptor @Inject constructor(
-    private val tokenProvider: TokenProvider,
+    private val authRepository: AuthRepository,
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
+        val token = runBlocking { runCatching { authRepository.idToken() }.getOrNull() }
         val request = chain.request()
-        val token = tokenProvider.token
-        val authed = if (token != null) {
+        val authed = if (!token.isNullOrBlank()) {
             request.newBuilder().addHeader("Authorization", "Bearer $token").build()
         } else {
             request

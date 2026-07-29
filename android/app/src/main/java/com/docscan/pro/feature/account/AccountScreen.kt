@@ -1,6 +1,7 @@
 package com.docscan.pro.feature.account
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
@@ -53,6 +55,7 @@ fun AccountScreen(
     viewModel: AccountViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val backupMessage by viewModel.backupMessage.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -108,9 +111,14 @@ fun AccountScreen(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             ListItem(
-                leadingContent = { Icon(Icons.Filled.CloudOff, null) },
-                headlineContent = { Text("Cloud backup") },
-                supportingContent = { Text("Sync scans across devices — coming soon") },
+                modifier = if (state.signedIn) Modifier.clickable { viewModel.backUp() } else Modifier,
+                leadingContent = { Icon(if (state.signedIn) Icons.Filled.CloudUpload else Icons.Filled.CloudOff, null) },
+                headlineContent = { Text(if (state.signedIn) "Back up now" else "Cloud backup") },
+                supportingContent = {
+                    Text(
+                        backupMessage ?: if (state.signedIn) "Sync your document list to the cloud" else "Sign in to enable",
+                    )
+                },
             )
             ListItem(
                 leadingContent = { Icon(Icons.Filled.DarkMode, null) },
