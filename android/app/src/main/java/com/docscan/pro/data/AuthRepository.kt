@@ -60,5 +60,8 @@ class AuthRepository @Inject constructor() {
         PhoneAuthProvider.verifyPhoneNumber(options)
     }
 
+    /** Current user's Firebase ID token (cached; refreshed automatically), or null if signed out. */
+    suspend fun idToken(): String? = auth.currentUser?.getIdToken(false)?.await()?.token
+
     fun signOut() = auth.signOut()
 }
