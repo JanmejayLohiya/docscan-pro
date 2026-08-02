@@ -1,5 +1,7 @@
 package com.docscan.pro.feature.account
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +22,8 @@ import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -59,7 +63,13 @@ fun AccountScreen(
     val backupMessage by viewModel.backupMessage.collectAsStateWithLifecycle()
     val restoreMessage by viewModel.restoreMessage.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
+    val driveEmail by viewModel.driveEmail.collectAsStateWithLifecycle()
+    val driveMessage by viewModel.driveMessage.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf(false) }
+
+    val driveSignIn = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result -> viewModel.onDriveSignInResult(result.data) }
 
     Scaffold(
         topBar = {
@@ -131,6 +141,37 @@ fun AccountScreen(
                     supportingContent = {
                         Text(restoreMessage ?: "Download documents backed up on other devices")
                     },
+                )
+            }
+
+            HorizontalDivider()
+            Text(
+                "Google Drive",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+            val connected = driveEmail != null
+            ListItem(
+                modifier = if (busy) Modifier else Modifier.clickable {
+                    if (connected) viewModel.disconnectDrive() else driveSignIn.launch(viewModel.driveSignInIntent())
+                },
+                leadingContent = { Icon(if (connected) Icons.Filled.LinkOff else Icons.Filled.Link, null) },
+                headlineContent = { Text(if (connected) "Disconnect Google Drive" else "Connect Google Drive") },
+                supportingContent = { Text(driveMessage ?: (driveEmail ?: "Back up PDFs to your own Google Drive")) },
+            )
+            if (connected) {
+                ListItem(
+                    modifier = if (busy) Modifier else Modifier.clickable { viewModel.backUpToDrive() },
+                    leadingContent = { Icon(Icons.Filled.CloudUpload, null) },
+                    headlineContent = { Text("Back up to Drive") },
+                    supportingContent = { Text("Upload your documents to Google Drive") },
+                )
+                ListItem(
+                    modifier = if (busy) Modifier else Modifier.clickable { viewModel.restoreFromDrive() },
+                    leadingContent = { Icon(Icons.Filled.CloudDownload, null) },
+                    headlineContent = { Text("Restore from Drive") },
+                    supportingContent = { Text("Download documents from Google Drive") },
                 )
             }
             ListItem(

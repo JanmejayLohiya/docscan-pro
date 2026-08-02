@@ -1,8 +1,10 @@
 package com.docscan.pro.feature.account
 
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.docscan.pro.data.AuthRepository
+import com.docscan.pro.data.GoogleDriveRepository
 import com.docscan.pro.data.ProfileStore
 import com.docscan.pro.data.SyncRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,6 +29,7 @@ class AccountViewModel @Inject constructor(
     private val store: ProfileStore,
     private val authRepository: AuthRepository,
     private val syncRepository: SyncRepository,
+    private val driveRepository: GoogleDriveRepository,
 ) : ViewModel() {
 
     val state: StateFlow<AccountUiState> =
@@ -48,9 +51,63 @@ class AccountViewModel @Inject constructor(
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
 
+    private val _driveEmail = MutableStateFlow(driveRepository.connectedEmail())
+    val driveEmail: StateFlow<String?> = _driveEmail.asStateFlow()
+
+    private val _driveMessage = MutableStateFlow<String?>(null)
+    val driveMessage: StateFlow<String?> = _driveMessage.asStateFlow()
+
     fun updateInfo(name: String, email: String) = store.updateInfo(name.trim(), email.trim())
 
     fun signOut() = authRepository.signOut()
+
+    // ---- Google Drive backup ----
+    fun driveSignInIntent(): Intent = driveRepository.signInIntent()
+
+    fun onDriveSignInResult(data: Intent?) {
+        driveRepository.handleSignInResult(data).fold(
+            onSuccess = {
+                _driveEmail.value = it
+                _driveMessage.value = "Connected as $it"
+            },
+            onFailure = { _driveMessage.value = "Couldn't connect Google Drive" },
+        )
+    }
+
+    fun disconnectDrive() {
+        driveRepository.disconnect()
+        _driveEmail.value = null
+        _driveMessage.value = "Disconnected"
+    }
+
+    fun backUpToDrive() {
+        if (_busy.value) return
+        _busy.value = true
+        _driveMessage.value = "Backing up to Drive…"
+        viewModelScope.launch {
+            driveRepository.backUp().fold(
+                onSuccess = { _driveMessage.value = "Backed up $it file(s) to Google Drive" },
+                onFailure = { _driveMessage.value = "Drive backup failed: ${it.message ?: "check connection"}" },
+            )
+            _busy.value = false
+        }
+    }
+
+    fun restoreFromDrive() {
+        if (_busy.value) return
+        _busy.value = true
+        _driveMessage.value = "Restoring from Drive…"
+        viewModelScope.launch {
+            driveRepository.restore().fold(
+                onSuccess = {
+                    _driveMessage.value =
+                        if (it == 0) "Drive is already up to date" else "Restored $it document(s) from Drive"
+                },
+                onFailure = { _driveMessage.value = "Drive restore failed: ${it.message ?: "check connection"}" },
+            )
+            _busy.value = false
+        }
+    }
 
     fun backUp() {
         if (_busy.value) return

@@ -23,6 +23,7 @@ imageCropper = "4.6.0"
 googleServices = "4.4.2"
 firebaseBom = "33.5.1"
 coroutinesPlayServices = "1.9.0"
+playServicesAuth = "21.2.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -57,6 +58,7 @@ image-cropper = { module = "com.vanniktech:android-image-cropper", version.ref =
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
 kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "coroutinesPlayServices" }
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -20,6 +20,7 @@ data class DocumentEntity(
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
     @ColumnInfo(name = "deleted_at") val deletedAt: Long?,
     @ColumnInfo(name = "ocr_text") val ocrText: String? = null,
+    @ColumnInfo(name = "drive_file_id") val driveFileId: String? = null,
 )
 
 @Entity(
