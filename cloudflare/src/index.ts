@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { verifyFirebaseToken } from './auth'
 
-type Bindings = { DB: D1Database; FIREBASE_PROJECT_ID: string }
+type Bindings = { DB: D1Database; FILES: R2Bucket; FIREBASE_PROJECT_ID: string }
 type Vars = { uid: string }
 
 const app = new Hono<{ Bindings: Bindings; Variables: Vars }>()
@@ -138,6 +138,44 @@ app.delete('/v1/documents/:id', async (c) => {
   await c.env.DB.prepare(
     `UPDATE documents SET deleted_at = ?3, updated_at = ?3 WHERE id = ?1 AND user_id = ?2`,
   ).bind(id, uid, Date.now()).run()
+  return c.json({ ok: true })
+})
+
+// --------------------------- Files (R2 backup) ---------------------------
+// Objects are keyed "<uid>/<docId>.pdf" so users can only touch their own files.
+const fileKey = (uid: string, id: string) => `${uid}/${id}.pdf`
+
+// PUT /v1/files/:id  → upload/replace a document's PDF (raw bytes in the body).
+app.put('/v1/files/:id', async (c) => {
+  const uid = c.get('uid')
+  const id = c.req.param('id')
+  const body = await c.req.arrayBuffer()
+  if (!body.byteLength) return c.json({ error: 'empty_body' }, 400)
+  await c.env.FILES.put(fileKey(uid, id), body, {
+    httpMetadata: { contentType: 'application/pdf' },
+  })
+  // Mark the document as backed up if we know about it.
+  await c.env.DB.prepare(
+    `UPDATE documents SET sync_state = 'SYNCED', updated_at = ?3 WHERE id = ?1 AND user_id = ?2`,
+  ).bind(id, uid, Date.now()).run()
+  return c.json({ ok: true, id, bytes: body.byteLength })
+})
+
+// GET /v1/files/:id  → download a document's PDF.
+app.get('/v1/files/:id', async (c) => {
+  const uid = c.get('uid')
+  const id = c.req.param('id')
+  const obj = await c.env.FILES.get(fileKey(uid, id))
+  if (!obj) return c.json({ error: 'not_found' }, 404)
+  return new Response(obj.body, {
+    headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(obj.size) },
+  })
+})
+
+// DELETE /v1/files/:id  → remove a backed-up PDF.
+app.delete('/v1/files/:id', async (c) => {
+  const uid = c.get('uid')
+  await c.env.FILES.delete(fileKey(uid, c.req.param('id')))
   return c.json({ ok: true })
 })
 
