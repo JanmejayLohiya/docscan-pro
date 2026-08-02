@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [DocumentEntity::class, PageEntity::class, FolderEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class ScanProDatabase : RoomDatabase() {

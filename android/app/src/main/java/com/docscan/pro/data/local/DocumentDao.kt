@@ -59,6 +59,9 @@ interface DocumentDao {
     @Query("UPDATE documents SET sync_state = :state WHERE id = :id")
     suspend fun setSyncState(id: String, state: String)
 
+    @Query("UPDATE documents SET drive_file_id = :driveFileId WHERE id = :id")
+    suspend fun setDriveFileId(id: String, driveFileId: String?)
+
     // ---- Folders ----
     @Query("SELECT * FROM folders WHERE deleted_at IS NULL ORDER BY name")
     fun observeFolders(): Flow<List<FolderEntity>>
