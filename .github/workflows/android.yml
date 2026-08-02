@@ -39,6 +39,16 @@ jobs:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: echo "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
 
+      # Sign the debug build with the registered debug keystore (SHA-1 known to
+      # Firebase/Google) so the installable APK can pass Google/phone auth on a
+      # real device. Without this, assembleDebug uses an ephemeral runner key.
+      - name: Install debug keystore
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p "$HOME/.android"
+          echo "$DEBUG_KEYSTORE_BASE64" | base64 --decode > "$HOME/.android/debug.keystore"
+
       # No gradle-wrapper.jar is committed, so generate a pinned wrapper using
       # the Gradle preinstalled on the runner. This keeps the repo free of the
       # binary jar while still building against a fixed Gradle version.
