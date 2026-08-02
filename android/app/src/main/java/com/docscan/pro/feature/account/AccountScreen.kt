@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.DarkMode
@@ -56,6 +57,8 @@ fun AccountScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val backupMessage by viewModel.backupMessage.collectAsStateWithLifecycle()
+    val restoreMessage by viewModel.restoreMessage.collectAsStateWithLifecycle()
+    val busy by viewModel.busy.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -111,15 +114,25 @@ fun AccountScreen(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             ListItem(
-                modifier = if (state.signedIn) Modifier.clickable { viewModel.backUp() } else Modifier,
+                modifier = if (state.signedIn && !busy) Modifier.clickable { viewModel.backUp() } else Modifier,
                 leadingContent = { Icon(if (state.signedIn) Icons.Filled.CloudUpload else Icons.Filled.CloudOff, null) },
                 headlineContent = { Text(if (state.signedIn) "Back up now" else "Cloud backup") },
                 supportingContent = {
                     Text(
-                        backupMessage ?: if (state.signedIn) "Sync your document list to the cloud" else "Sign in to enable",
+                        backupMessage ?: if (state.signedIn) "Upload your documents to the cloud" else "Sign in to enable",
                     )
                 },
             )
+            if (state.signedIn) {
+                ListItem(
+                    modifier = if (busy) Modifier else Modifier.clickable { viewModel.restore() },
+                    leadingContent = { Icon(Icons.Filled.CloudDownload, null) },
+                    headlineContent = { Text("Restore from cloud") },
+                    supportingContent = {
+                        Text(restoreMessage ?: "Download documents backed up on other devices")
+                    },
+                )
+            }
             ListItem(
                 leadingContent = { Icon(Icons.Filled.DarkMode, null) },
                 headlineContent = { Text("Appearance") },

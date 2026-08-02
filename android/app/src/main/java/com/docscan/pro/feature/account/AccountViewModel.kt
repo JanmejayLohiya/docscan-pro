@@ -42,17 +42,42 @@ class AccountViewModel @Inject constructor(
     private val _backupMessage = MutableStateFlow<String?>(null)
     val backupMessage: StateFlow<String?> = _backupMessage.asStateFlow()
 
+    private val _restoreMessage = MutableStateFlow<String?>(null)
+    val restoreMessage: StateFlow<String?> = _restoreMessage.asStateFlow()
+
+    private val _busy = MutableStateFlow(false)
+    val busy: StateFlow<Boolean> = _busy.asStateFlow()
+
     fun updateInfo(name: String, email: String) = store.updateInfo(name.trim(), email.trim())
 
     fun signOut() = authRepository.signOut()
 
     fun backUp() {
+        if (_busy.value) return
+        _busy.value = true
         _backupMessage.value = "Backing up…"
         viewModelScope.launch {
-            syncRepository.backUpMetadata().fold(
-                onSuccess = { _backupMessage.value = "Backed up $it item(s) to the cloud" },
+            syncRepository.backUp().fold(
+                onSuccess = { _backupMessage.value = "Backed up $it file(s) to the cloud" },
                 onFailure = { _backupMessage.value = "Backup failed: ${it.message ?: "check connection"}" },
             )
+            _busy.value = false
+        }
+    }
+
+    fun restore() {
+        if (_busy.value) return
+        _busy.value = true
+        _restoreMessage.value = "Restoring…"
+        viewModelScope.launch {
+            syncRepository.restore().fold(
+                onSuccess = {
+                    _restoreMessage.value =
+                        if (it == 0) "Everything is already up to date" else "Restored $it document(s)"
+                },
+                onFailure = { _restoreMessage.value = "Restore failed: ${it.message ?: "check connection"}" },
+            )
+            _busy.value = false
         }
     }
 }

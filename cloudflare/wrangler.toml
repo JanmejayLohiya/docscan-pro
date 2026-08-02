@@ -10,6 +10,13 @@ database_name = "scanpro"
 database_id = "26e5ae97-e1ec-404f-9ee0-5658301654a7"
 migrations_dir = "migrations"
 
+# R2 bucket for backed-up PDF files. Objects are keyed by "<uid>/<docId>.pdf"
+# so a user can only ever read/write their own files. Create it with
+# `npx wrangler r2 bucket create scanpro-files`.
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "scanpro-files"
+
 # Non-secret vars. FIREBASE_PROJECT_ID is used to validate Firebase ID tokens
 # (issuer/audience). It is not a secret, but keep it accurate.
 [vars]
