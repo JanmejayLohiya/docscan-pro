@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { verifyFirebaseToken } from './auth'
 
-type Bindings = { DB: D1Database; FILES: R2Bucket; FIREBASE_PROJECT_ID: string }
+type Bindings = { DB: D1Database; FILES: KVNamespace; FIREBASE_PROJECT_ID: string }
 type Vars = { uid: string }
 
 const app = new Hono<{ Bindings: Bindings; Variables: Vars }>()
@@ -141,8 +141,9 @@ app.delete('/v1/documents/:id', async (c) => {
   return c.json({ ok: true })
 })
 
-// --------------------------- Files (R2 backup) ---------------------------
-// Objects are keyed "<uid>/<docId>.pdf" so users can only touch their own files.
+// --------------------------- Files (KV backup) ---------------------------
+// Values are keyed "<uid>/<docId>.pdf" so users can only touch their own files.
+// KV caps a single value at 25 MB, which comfortably covers scanned PDFs.
 const fileKey = (uid: string, id: string) => `${uid}/${id}.pdf`
 
 // PUT /v1/files/:id  → upload/replace a document's PDF (raw bytes in the body).
@@ -151,9 +152,7 @@ app.put('/v1/files/:id', async (c) => {
   const id = c.req.param('id')
   const body = await c.req.arrayBuffer()
   if (!body.byteLength) return c.json({ error: 'empty_body' }, 400)
-  await c.env.FILES.put(fileKey(uid, id), body, {
-    httpMetadata: { contentType: 'application/pdf' },
-  })
+  await c.env.FILES.put(fileKey(uid, id), body)
   // Mark the document as backed up if we know about it.
   await c.env.DB.prepare(
     `UPDATE documents SET sync_state = 'SYNCED', updated_at = ?3 WHERE id = ?1 AND user_id = ?2`,
@@ -165,10 +164,10 @@ app.put('/v1/files/:id', async (c) => {
 app.get('/v1/files/:id', async (c) => {
   const uid = c.get('uid')
   const id = c.req.param('id')
-  const obj = await c.env.FILES.get(fileKey(uid, id))
-  if (!obj) return c.json({ error: 'not_found' }, 404)
-  return new Response(obj.body, {
-    headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(obj.size) },
+  const body = await c.env.FILES.get(fileKey(uid, id), 'arrayBuffer')
+  if (!body) return c.json({ error: 'not_found' }, 404)
+  return new Response(body, {
+    headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(body.byteLength) },
   })
 })
 
