@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -57,8 +58,10 @@ fun AuthScreen(
     var usePhone by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var countryCode by remember { mutableStateOf("+91") }
     var phone by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
+    var phoneError by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -84,17 +87,43 @@ fun AuthScreen(
             }
 
             if (usePhone) {
-                OutlinedTextField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    singleLine = true,
-                    label = { Text("Phone (e.g. +15551234567)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    modifier = Modifier.fillMaxWidth(),
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = countryCode,
+                        onValueChange = { countryCode = it },
+                        singleLine = true,
+                        label = { Text("Code") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        modifier = Modifier.width(96.dp),
+                    )
+                    OutlinedTextField(
+                        value = phone,
+                        onValueChange = { phone = it; phoneError = null },
+                        singleLine = true,
+                        label = { Text("Phone number") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Text(
+                    "Include your country code, e.g. +91 98765 43210",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                phoneError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+                }
                 if (!state.codeSent) {
                     OutlinedButton(
-                        onClick = { viewModel.sendCode(context.findActivity(), phone) },
+                        onClick = {
+                            val e164 = toE164(countryCode, phone)
+                            if (e164 == null) {
+                                phoneError = "Enter a valid number with country code (e.g. +91…)"
+                            } else {
+                                phoneError = null
+                                viewModel.sendCode(context.findActivity(), e164)
+                            }
+                        },
                         enabled = phone.isNotBlank() && !state.loading,
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("Send code") }
@@ -154,4 +183,19 @@ private fun Context.findActivity(): Activity {
         ctx = ctx.baseContext
     }
     error("No Activity found")
+}
+
+/**
+ * Builds a Firebase-acceptable E.164 number ("+<country><subscriber>"). If the
+ * user already typed a leading "+", that is treated as a full number and the
+ * country-code field is ignored. Returns null if the result isn't valid E.164.
+ */
+private fun toE164(countryCode: String, raw: String): String? {
+    val trimmed = raw.trim()
+    val e164 = if (trimmed.startsWith("+")) {
+        "+" + trimmed.drop(1).filter { it.isDigit() }
+    } else {
+        "+" + countryCode.filter { it.isDigit() } + trimmed.filter { it.isDigit() }
+    }
+    return if (Regex("^\\+[1-9]\\d{6,14}$").matches(e164)) e164 else null
 }
