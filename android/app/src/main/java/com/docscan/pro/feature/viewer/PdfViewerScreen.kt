@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Search
@@ -214,10 +215,10 @@ fun PdfViewerScreen(
                         modifier = Modifier.fillMaxSize().padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        items(state.pages) { bmp ->
+                        itemsIndexed(state.pages) { index, bmp ->
                             Image(
                                 bitmap = bmp.asImageBitmap(),
-                                contentDescription = null,
+                                contentDescription = "Page ${index + 1} of ${state.pages.size}",
                                 contentScale = ContentScale.FillWidth,
                                 colorFilter = theme.filter,
                                 modifier = Modifier.fillMaxWidth(),
