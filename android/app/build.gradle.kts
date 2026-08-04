@@ -79,6 +79,8 @@ dependencies {
 
     implementation(libs.mlkit.document.scanner)
     implementation(libs.mlkit.text.recognition)
+    implementation(libs.mlkit.translate)
+    implementation(libs.mlkit.language.id)
     implementation(libs.image.cropper)
 
     implementation(platform(libs.firebase.bom))

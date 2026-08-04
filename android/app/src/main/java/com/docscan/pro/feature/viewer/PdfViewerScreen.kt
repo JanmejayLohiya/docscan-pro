@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -91,6 +92,7 @@ fun PdfViewerScreen(
     var themeMenu by remember { mutableStateOf(false) }
     var searching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
+    var translateMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -108,6 +110,19 @@ fun PdfViewerScreen(
                         DropdownMenu(expanded = themeMenu, onDismissRequest = { themeMenu = false }) {
                             ViewerTheme.entries.forEach { t ->
                                 DropdownMenuItem(text = { Text(t.label) }, onClick = { theme = t; themeMenu = false })
+                            }
+                        }
+                    }
+                    Box {
+                        IconButton(onClick = { translateMenu = true }) {
+                            Icon(Icons.Filled.Translate, contentDescription = "Translate")
+                        }
+                        DropdownMenu(expanded = translateMenu, onDismissRequest = { translateMenu = false }) {
+                            TRANSLATE_TARGETS.forEach { (label, tag) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = { translateMenu = false; viewModel.translate(tag, label) },
+                                )
                             }
                         }
                     }
@@ -139,6 +154,41 @@ fun PdfViewerScreen(
             Box(Modifier.fillMaxSize().background(bg), contentAlignment = Alignment.Center) {
                 when {
                     state.loading -> CircularProgressIndicator()
+                    state.translating -> androidx.compose.foundation.layout.Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        CircularProgressIndicator()
+                        Text("Translating to ${state.translatedLang}…", Modifier.padding(horizontal = 24.dp))
+                    }
+                    state.translatedText != null -> androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
+                        androidx.compose.foundation.layout.Row(
+                            Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "Translated to ${state.translatedLang}",
+                                style = MaterialTheme.typography.titleSmall,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = { viewModel.clearTranslation() }) { Text("Close") }
+                        }
+                        HorizontalDivider()
+                        LazyColumn(Modifier.fillMaxSize().padding(16.dp)) {
+                            item { Text(state.translatedText!!, style = MaterialTheme.typography.bodyMedium) }
+                        }
+                    }
+                    state.translateError != null -> androidx.compose.foundation.layout.Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            state.translateError!!,
+                            Modifier.padding(24.dp),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        TextButton(onClick = { viewModel.clearTranslation() }) { Text("Dismiss") }
+                    }
                     showResults -> {
                         val matches = remember(query, state.ocrText) { searchSnippets(state.ocrText, query) }
                         if (matches.isEmpty()) {
@@ -179,6 +229,20 @@ fun PdfViewerScreen(
         }
     }
 }
+
+/** Target languages offered for on-device translation (label to BCP-47 tag). */
+private val TRANSLATE_TARGETS = listOf(
+    "English" to "en",
+    "Hindi" to "hi",
+    "Spanish" to "es",
+    "French" to "fr",
+    "German" to "de",
+    "Chinese" to "zh",
+    "Arabic" to "ar",
+    "Russian" to "ru",
+    "Portuguese" to "pt",
+    "Japanese" to "ja",
+)
 
 /** Returns context snippets around each occurrence of [query] in [text] (case-insensitive). */
 private fun searchSnippets(text: String, query: String): List<String> {

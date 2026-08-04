@@ -9,6 +9,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.docscan.pro.data.DocumentRepository
+import com.docscan.pro.util.translateText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +29,10 @@ data class PdfViewerUiState(
     val ocrText: String = "",
     val pages: List<Bitmap> = emptyList(),
     val loading: Boolean = true,
+    val translating: Boolean = false,
+    val translatedText: String? = null,
+    val translatedLang: String? = null,
+    val translateError: String? = null,
 )
 
 @HiltViewModel
@@ -47,6 +52,27 @@ class PdfViewerViewModel @Inject constructor(
             val pages = withContext(Dispatchers.IO) { renderPdf(doc.filePath) }
             _state.update { it.copy(loading = false, pages = pages) }
         }
+    }
+
+    /** Translates the document's OCR text into [targetTag] (BCP-47, e.g. "hi"). */
+    fun translate(targetTag: String, targetLabel: String) {
+        if (_state.value.translating) return
+        val text = _state.value.ocrText
+        if (text.isBlank()) {
+            _state.update { it.copy(translateError = "No recognized text to translate in this document.") }
+            return
+        }
+        _state.update { it.copy(translating = true, translateError = null, translatedText = null, translatedLang = targetLabel) }
+        viewModelScope.launch {
+            runCatching { translateText(text, targetTag) }.fold(
+                onSuccess = { result -> _state.update { it.copy(translating = false, translatedText = result) } },
+                onFailure = { e -> _state.update { it.copy(translating = false, translateError = "Translation failed: ${e.message ?: "try again"}") } },
+            )
+        }
+    }
+
+    fun clearTranslation() = _state.update {
+        it.copy(translatedText = null, translatedLang = null, translateError = null)
     }
 
     private fun renderPdf(path: String): List<Bitmap> {
