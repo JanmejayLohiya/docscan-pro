@@ -36,6 +36,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -51,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.docscan.pro.data.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,6 +69,7 @@ fun AccountScreen(
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val driveEmail by viewModel.driveEmail.collectAsStateWithLifecycle()
     val driveMessage by viewModel.driveMessage.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf(false) }
 
     val driveSignIn = rememberLauncherForActivityResult(
@@ -177,7 +182,19 @@ fun AccountScreen(
             ListItem(
                 leadingContent = { Icon(Icons.Filled.DarkMode, null) },
                 headlineContent = { Text("Appearance") },
-                supportingContent = { Text("Follows your system theme") },
+                supportingContent = {
+                    val labels = mapOf(ThemeMode.SYSTEM to "System", ThemeMode.LIGHT to "Light", ThemeMode.DARK to "Dark")
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                        val modes = listOf(ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK)
+                        modes.forEachIndexed { i, m ->
+                            SegmentedButton(
+                                selected = themeMode == m,
+                                onClick = { viewModel.setTheme(m) },
+                                shape = SegmentedButtonDefaults.itemShape(i, modes.size),
+                            ) { Text(labels[m] ?: "") }
+                        }
+                    }
+                },
             )
             ListItem(
                 leadingContent = { Icon(Icons.Filled.Info, null) },
