@@ -1,14 +1,20 @@
 package com.docscan.pro.feature.viewer
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Palette
@@ -41,10 +47,13 @@ import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.docscan.pro.util.PageOcr
 import com.docscan.pro.util.shareFiles
 import java.io.File
 
@@ -95,6 +104,15 @@ fun PdfViewerScreen(
     var query by remember { mutableStateOf("") }
     var translateMenu by remember { mutableStateOf(false) }
 
+    val tokens = remember(query, searching) {
+        if (searching) query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotBlank() } else emptyList()
+    }
+    val translated = state.translatedPages
+    val matchCount = remember(tokens, state.pageOcr) {
+        if (tokens.isEmpty()) 0
+        else state.pageOcr.sumOf { page -> page.words.count { w -> tokens.any { w.text.lowercase().contains(it) } } }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -138,8 +156,7 @@ fun PdfViewerScreen(
             )
         },
     ) { padding ->
-        val showResults = searching && query.isNotBlank()
-        androidx.compose.foundation.layout.Column(Modifier.fillMaxSize().padding(padding)) {
+        Column(Modifier.fillMaxSize().padding(padding)) {
             if (searching) {
                 OutlinedTextField(
                     value = query,
@@ -147,39 +164,39 @@ fun PdfViewerScreen(
                     singleLine = true,
                     leadingIcon = { Icon(Icons.Filled.Search, null) },
                     placeholder = { Text("Search this document") },
+                    supportingText = if (query.isNotBlank()) {
+                        { Text("$matchCount match${if (matchCount == 1) "" else "es"} highlighted") }
+                    } else null,
                     modifier = Modifier.fillMaxWidth().padding(12.dp),
                 )
                 HorizontalDivider()
             }
-            val bg = if (showResults) MaterialTheme.colorScheme.surface else theme.background
-            Box(Modifier.fillMaxSize().background(bg), contentAlignment = Alignment.Center) {
+            if (translated != null) {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Translated to ${state.translatedLang}",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { viewModel.clearTranslation() }) { Text("Show original") }
+                }
+                HorizontalDivider()
+            }
+
+            Box(Modifier.fillMaxSize().background(theme.background), contentAlignment = Alignment.Center) {
                 when {
                     state.loading -> CircularProgressIndicator()
-                    state.translating -> androidx.compose.foundation.layout.Column(
+                    state.translating -> Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         CircularProgressIndicator()
                         Text("Translating to ${state.translatedLang}…", Modifier.padding(horizontal = 24.dp))
                     }
-                    state.translatedText != null -> androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
-                        androidx.compose.foundation.layout.Row(
-                            Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                "Translated to ${state.translatedLang}",
-                                style = MaterialTheme.typography.titleSmall,
-                                modifier = Modifier.weight(1f),
-                            )
-                            TextButton(onClick = { viewModel.clearTranslation() }) { Text("Close") }
-                        }
-                        HorizontalDivider()
-                        LazyColumn(Modifier.fillMaxSize().padding(16.dp)) {
-                            item { Text(state.translatedText!!, style = MaterialTheme.typography.bodyMedium) }
-                        }
-                    }
-                    state.translateError != null -> androidx.compose.foundation.layout.Column(
+                    state.translateError != null && translated == null -> Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
@@ -190,41 +207,100 @@ fun PdfViewerScreen(
                         )
                         TextButton(onClick = { viewModel.clearTranslation() }) { Text("Dismiss") }
                     }
-                    showResults -> {
-                        val matches = remember(query, state.ocrText) { searchSnippets(state.ocrText, query) }
-                        if (matches.isEmpty()) {
-                            Text("No matches in this document.", Modifier.padding(24.dp))
-                        } else {
-                            LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-                                item {
-                                    Text(
-                                        "${matches.size} match${if (matches.size == 1) "" else "es"}",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        modifier = Modifier.padding(vertical = 10.dp),
-                                    )
-                                }
-                                items(matches) { snippet ->
-                                    Text(snippet, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 10.dp))
-                                    HorizontalDivider()
-                                }
-                            }
-                        }
-                    }
                     state.pages.isEmpty() -> Text("Couldn't open this document.", Modifier.padding(24.dp))
                     else -> LazyColumn(
                         modifier = Modifier.fillMaxSize().padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         itemsIndexed(state.pages) { index, bmp ->
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = "Page ${index + 1} of ${state.pages.size}",
-                                contentScale = ContentScale.FillWidth,
+                            PageView(
+                                bmp = bmp,
+                                ocr = state.pageOcr.getOrNull(index),
+                                translatedBlocks = translated?.getOrNull(index),
+                                highlightTokens = tokens,
                                 colorFilter = theme.filter,
-                                modifier = Modifier.fillMaxWidth(),
+                                pageNumber = index + 1,
+                                pageCount = state.pages.size,
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Renders one page image and, on top of it, optional overlays in the page's own
+ * pixel space: yellow highlight boxes for search matches, and translated text
+ * boxes (masking the original) for the in-layout translation view.
+ */
+@Composable
+private fun PageView(
+    bmp: Bitmap,
+    ocr: PageOcr?,
+    translatedBlocks: List<com.docscan.pro.feature.viewer.TranslatedBlock>?,
+    highlightTokens: List<String>,
+    colorFilter: ColorFilter?,
+    pageNumber: Int,
+    pageCount: Int,
+) {
+    val density = LocalDensity.current
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val widthPx = constraints.maxWidth.toFloat()
+        // OCR was run on this exact bitmap, so its coordinate space matches bmp.
+        val scale = widthPx / bmp.width
+        val displayedHeightPx = bmp.height * scale
+        Box(Modifier.fillMaxWidth().height(with(density) { displayedHeightPx.toDp() })) {
+            Image(
+                bitmap = bmp.asImageBitmap(),
+                contentDescription = "Page $pageNumber of $pageCount",
+                contentScale = ContentScale.FillWidth,
+                colorFilter = colorFilter,
+                modifier = Modifier.fillMaxSize(),
+            )
+            // Search highlights.
+            if (ocr != null && highlightTokens.isNotEmpty()) {
+                ocr.words.forEach { w ->
+                    if (highlightTokens.any { w.text.lowercase().contains(it) }) {
+                        Box(
+                            Modifier
+                                .offset(
+                                    x = with(density) { (w.left * scale).toDp() },
+                                    y = with(density) { (w.top * scale).toDp() },
+                                )
+                                .size(
+                                    width = with(density) { ((w.right - w.left) * scale).toDp() },
+                                    height = with(density) { ((w.bottom - w.top) * scale).toDp() },
+                                )
+                                .background(Color(0x88FFEB3B)),
+                        )
+                    }
+                }
+            }
+            // Translation overlay (mask original block, draw translated text in place).
+            translatedBlocks?.forEach { b ->
+                val boxH = (b.bottom - b.top) * scale
+                val fontSp = with(density) { (boxH * 0.32f).toDp().value }.coerceIn(8f, 15f)
+                Box(
+                    Modifier
+                        .offset(
+                            x = with(density) { (b.left * scale).toDp() },
+                            y = with(density) { (b.top * scale).toDp() },
+                        )
+                        .size(
+                            width = with(density) { ((b.right - b.left) * scale).toDp() },
+                            height = with(density) { (boxH).toDp() },
+                        )
+                        .background(MaterialTheme.colorScheme.surface),
+                ) {
+                    Text(
+                        b.text,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = fontSp.sp,
+                        lineHeight = (fontSp * 1.1f).sp,
+                        overflow = TextOverflow.Clip,
+                    )
                 }
             }
         }
@@ -244,18 +320,3 @@ private val TRANSLATE_TARGETS = listOf(
     "Portuguese" to "pt",
     "Japanese" to "ja",
 )
-
-/** Returns context snippets around each occurrence of [query] in [text] (case-insensitive). */
-private fun searchSnippets(text: String, query: String): List<String> {
-    val q = query.trim()
-    if (q.isEmpty()) return emptyList()
-    val out = mutableListOf<String>()
-    var i = text.indexOf(q, 0, ignoreCase = true)
-    while (i >= 0 && out.size < 100) {
-        val start = (i - 30).coerceAtLeast(0)
-        val end = (i + q.length + 30).coerceAtMost(text.length)
-        out.add("…" + text.substring(start, end).replace('\n', ' ').trim() + "…")
-        i = text.indexOf(q, i + q.length, ignoreCase = true)
-    }
-    return out
-}

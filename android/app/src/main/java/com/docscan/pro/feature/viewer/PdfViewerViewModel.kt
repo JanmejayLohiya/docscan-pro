@@ -9,7 +9,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.docscan.pro.data.DocumentRepository
-import com.docscan.pro.util.translateText
+import com.docscan.pro.util.PageOcr
+import com.docscan.pro.util.recognizeGeometry
+import com.docscan.pro.util.translateAll
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,14 +25,18 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
+/** A translated text block, positioned in the page's pixel coordinate space. */
+data class TranslatedBlock(val text: String, val left: Int, val top: Int, val right: Int, val bottom: Int)
+
 data class PdfViewerUiState(
     val title: String = "",
     val filePath: String = "",
     val ocrText: String = "",
     val pages: List<Bitmap> = emptyList(),
+    val pageOcr: List<PageOcr> = emptyList(),
     val loading: Boolean = true,
     val translating: Boolean = false,
-    val translatedText: String? = null,
+    val translatedPages: List<List<TranslatedBlock>>? = null,
     val translatedLang: String? = null,
     val translateError: String? = null,
 )
@@ -51,28 +57,44 @@ class PdfViewerViewModel @Inject constructor(
             _state.update { it.copy(title = doc.name, filePath = doc.filePath, ocrText = doc.ocrText.orEmpty()) }
             val pages = withContext(Dispatchers.IO) { renderPdf(doc.filePath) }
             _state.update { it.copy(loading = false, pages = pages) }
+            // OCR geometry in the background — powers in-page highlight + translation overlay.
+            val ocr = withContext(Dispatchers.IO) { pages.map { recognizeGeometry(it) } }
+            _state.update { it.copy(pageOcr = ocr) }
         }
     }
 
-    /** Translates the document's OCR text into [targetTag] (BCP-47, e.g. "hi"). */
+    /** Translates every text block on every page into [targetTag], keeping positions. */
     fun translate(targetTag: String, targetLabel: String) {
         if (_state.value.translating) return
-        val text = _state.value.ocrText
-        if (text.isBlank()) {
-            _state.update { it.copy(translateError = "No recognized text to translate in this document.") }
+        val ocr = _state.value.pageOcr
+        if (ocr.isEmpty() || ocr.none { it.blocks.isNotEmpty() }) {
+            _state.update { it.copy(translateError = "No recognized text to translate yet — try again in a moment.") }
             return
         }
-        _state.update { it.copy(translating = true, translateError = null, translatedText = null, translatedLang = targetLabel) }
+        _state.update {
+            it.copy(translating = true, translateError = null, translatedPages = null, translatedLang = targetLabel)
+        }
         viewModelScope.launch {
-            runCatching { translateText(text, targetTag) }.fold(
-                onSuccess = { result -> _state.update { it.copy(translating = false, translatedText = result) } },
-                onFailure = { e -> _state.update { it.copy(translating = false, translateError = "Translation failed: ${e.message ?: "try again"}") } },
+            runCatching {
+                val flat = ocr.flatMap { page -> page.blocks }
+                val translated = translateAll(flat.map { it.text }, targetTag)
+                var i = 0
+                ocr.map { page ->
+                    page.blocks.map { b ->
+                        TranslatedBlock(translated[i++], b.left, b.top, b.right, b.bottom)
+                    }
+                }
+            }.fold(
+                onSuccess = { pages -> _state.update { it.copy(translating = false, translatedPages = pages) } },
+                onFailure = { e ->
+                    _state.update { it.copy(translating = false, translateError = "Translation failed: ${e.message ?: "try again"}") }
+                },
             )
         }
     }
 
     fun clearTranslation() = _state.update {
-        it.copy(translatedText = null, translatedLang = null, translateError = null)
+        it.copy(translatedPages = null, translatedLang = null, translateError = null)
     }
 
     private fun renderPdf(path: String): List<Bitmap> {
