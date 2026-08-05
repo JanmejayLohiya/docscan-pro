@@ -49,3 +49,31 @@ suspend fun translateText(text: String, targetTag: String): String {
         translator.close()
     }
 }
+
+/**
+ * Translates many strings with a single translator + one model download — used
+ * for the in-layout overlay, which translates each text block of each page.
+ * Source is detected from the first non-blank entry.
+ */
+suspend fun translateAll(texts: List<String>, targetTag: String): List<String> {
+    if (texts.isEmpty()) return emptyList()
+    val sample = texts.firstOrNull { it.isNotBlank() } ?: return texts
+    val sourceCode = TranslateLanguage.fromLanguageTag(detectLanguageTag(sample))
+        ?: TranslateLanguage.ENGLISH
+    val targetCode = TranslateLanguage.fromLanguageTag(targetTag)
+        ?: error("Unsupported target language: $targetTag")
+    if (sourceCode == targetCode) return texts
+
+    val translator = Translation.getClient(
+        TranslatorOptions.Builder()
+            .setSourceLanguage(sourceCode)
+            .setTargetLanguage(targetCode)
+            .build(),
+    )
+    return try {
+        translator.downloadModelIfNeeded(DownloadConditions.Builder().build()).await()
+        texts.map { if (it.isBlank()) it else translator.translate(it).await() }
+    } finally {
+        translator.close()
+    }
+}
