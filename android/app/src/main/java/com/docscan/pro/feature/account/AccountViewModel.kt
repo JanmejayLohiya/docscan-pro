@@ -7,6 +7,8 @@ import com.docscan.pro.data.AuthRepository
 import com.docscan.pro.data.GoogleDriveRepository
 import com.docscan.pro.data.ProfileStore
 import com.docscan.pro.data.SyncRepository
+import com.docscan.pro.data.ThemeMode
+import com.docscan.pro.data.ThemeStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,7 +32,12 @@ class AccountViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val syncRepository: SyncRepository,
     private val driveRepository: GoogleDriveRepository,
+    private val themeStore: ThemeStore,
 ) : ViewModel() {
+
+    val themeMode: StateFlow<ThemeMode> = themeStore.mode
+
+    fun setTheme(mode: ThemeMode) = themeStore.setMode(mode)
 
     val state: StateFlow<AccountUiState> =
         combine(store.profile, authRepository.authState) { profile, user ->
