@@ -43,7 +43,6 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.DropdownMenu
@@ -75,10 +74,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.docscan.pro.domain.CompressionLevel
@@ -94,6 +92,13 @@ import com.docscan.pro.util.videoToImage
 import kotlinx.coroutines.launch
 
 private enum class Screen { Home, Search, Documents }
+
+private data class ToolSpec(
+    val title: String,
+    val color: Color,
+    val icon: ImageVector,
+    val onClick: () -> Unit,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -284,15 +289,23 @@ private fun HomeContent(
             )
         }
         item {
+            val tools = listOf(
+                ToolSpec("Edit PDF", Color(0xFF4A58C4), Icons.Filled.Edit, onEditPdf),
+                ToolSpec("Image to PDF", Color(0xFFE5533C), Icons.Filled.PictureAsPdf, onImageToPdf),
+                ToolSpec("PDF to image", Color(0xFF1E9E5A), Icons.Filled.Image, onPdfToImage),
+                ToolSpec("JPEG / PNG", Color(0xFFE0A020), Icons.Filled.SwapHoriz, onConvertImage),
+                ToolSpec("Video to image", Color(0xFF7C4DFF), Icons.Filled.Videocam, onVideoToImage),
+            )
             Column(
-                Modifier.padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ToolCard("Edit PDF", "Reorder, crop, rotate, erase pages", Color(0xFF4A58C4), Icons.Filled.Edit, onEditPdf)
-                ToolCard("Image to PDF", "Combine photos into one PDF", Color(0xFFE5533C), Icons.Filled.PictureAsPdf, onImageToPdf)
-                ToolCard("PDF to image", "Export each page as PNG", Color(0xFF1E9E5A), Icons.Filled.Image, onPdfToImage)
-                ToolCard("Convert JPEG / PNG", "Switch an image's format", Color(0xFFE0A020), Icons.Filled.SwapHoriz, onConvertImage)
-                ToolCard("Video to image", "Grab a frame from a video", Color(0xFF7C4DFF), Icons.Filled.Videocam, onVideoToImage)
+                tools.chunked(3).forEach { rowTools ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        rowTools.forEach { t -> ToolTile(Modifier.weight(1f), t) }
+                        repeat(3 - rowTools.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
             }
         }
 
@@ -334,22 +347,25 @@ private fun HomeContent(
 }
 
 @Composable
-private fun ToolCard(title: String, subtitle: String, color: Color, icon: ImageVector, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Row(
-            Modifier.fillMaxWidth().padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Box(
-                Modifier.size(46.dp).clip(CircleShape).background(color),
-                contentAlignment = Alignment.Center,
-            ) { Icon(icon, contentDescription = null, tint = Color.White) }
-            Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Medium, fontSize = 16.sp)
-                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-            }
-        }
+private fun ToolTile(modifier: Modifier, spec: ToolSpec) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = spec.onClick)
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(
+            Modifier.size(52.dp).clip(CircleShape).background(spec.color),
+            contentAlignment = Alignment.Center,
+        ) { Icon(spec.icon, contentDescription = null, tint = Color.White) }
+        Text(
+            spec.title,
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
     }
 }
 
