@@ -1,6 +1,9 @@
 package com.docscan.pro.feature.home
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -21,7 +24,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudOff
@@ -31,13 +33,17 @@ import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.DropdownMenu
@@ -59,6 +65,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,8 +74,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.docscan.pro.domain.CompressionLevel
@@ -76,6 +86,12 @@ import com.docscan.pro.domain.Document
 import com.docscan.pro.domain.Folder
 import com.docscan.pro.feature.scan.ScannedPages
 import com.docscan.pro.feature.scan.rememberScanLauncher
+import com.docscan.pro.util.convertImageFormat
+import com.docscan.pro.util.imagesToPdf
+import com.docscan.pro.util.pdfToImages
+import com.docscan.pro.util.shareFiles
+import com.docscan.pro.util.videoToImage
+import kotlinx.coroutines.launch
 
 private enum class Screen { Home, Search, Documents }
 
@@ -84,7 +100,7 @@ private enum class Screen { Home, Search, Documents }
 fun HomeScreen(
     onOpenDocument: (String) -> Unit,
     onAccount: () -> Unit,
-    onTools: () -> Unit,
+    onEditPdf: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -93,6 +109,36 @@ fun HomeScreen(
     val launchScan = rememberScanLauncher(onScanned = { scan ->
         if (scan.pageUris.isNotEmpty()) pendingScan = scan
     })
+
+    // File-conversion tools (moved from the old Tools hub onto Home).
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    fun runTool(block: suspend () -> Unit) {
+        if (busy) return
+        busy = true
+        scope.launch {
+            try {
+                block()
+            } catch (e: Exception) {
+                Toast.makeText(context, e.message ?: "Conversion failed", Toast.LENGTH_SHORT).show()
+            } finally {
+                busy = false
+            }
+        }
+    }
+    val imagesToPdfLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) runTool { shareFiles(context, listOf(imagesToPdf(context, uris)), "application/pdf") }
+    }
+    val pdfToImagesLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) runTool { shareFiles(context, pdfToImages(context, uri), "image/png") }
+    }
+    val imageConvertLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) runTool { shareFiles(context, listOf(convertImageFormat(context, uri)), "image/*") }
+    }
+    val videoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) runTool { shareFiles(context, listOf(videoToImage(context, uri)), "image/png") }
+    }
 
     if (screen != Screen.Home) BackHandler { screen = Screen.Home }
 
@@ -136,7 +182,7 @@ fun HomeScreen(
             HomeBottomBar(
                 onHome = { screen = Screen.Home },
                 onScan = launchScan,
-                onTools = onTools,
+                onDocuments = { screen = Screen.Documents },
             )
         },
     ) { padding ->
@@ -150,6 +196,11 @@ fun HomeScreen(
                     onDelete = viewModel::delete,
                     onSearch = { screen = Screen.Search },
                     onDocuments = { screen = Screen.Documents },
+                    onEditPdf = onEditPdf,
+                    onImageToPdf = { imagesToPdfLauncher.launch(arrayOf("image/*")) },
+                    onPdfToImage = { pdfToImagesLauncher.launch(arrayOf("application/pdf")) },
+                    onConvertImage = { imageConvertLauncher.launch(arrayOf("image/*")) },
+                    onVideoToImage = { videoLauncher.launch(arrayOf("video/*")) },
                 )
                 Screen.Search -> SearchContent(state.documents, onOpenDocument, viewModel::rename, viewModel::compress, viewModel::delete)
                 Screen.Documents -> DocumentsContent(
@@ -162,6 +213,12 @@ fun HomeScreen(
                     onMove = viewModel::move,
                     onCreateFolder = viewModel::createFolder,
                 )
+            }
+            if (busy) {
+                Box(
+                    Modifier.fillMaxSize().background(Color(0x66000000)),
+                    contentAlignment = Alignment.Center,
+                ) { CircularProgressIndicator(color = Color.White) }
             }
         }
     }
@@ -176,57 +233,121 @@ private fun HomeContent(
     onDelete: (String) -> Unit,
     onSearch: () -> Unit,
     onDocuments: () -> Unit,
+    onEditPdf: () -> Unit,
+    onImageToPdf: () -> Unit,
+    onPdfToImage: () -> Unit,
+    onConvertImage: () -> Unit,
+    onVideoToImage: () -> Unit,
 ) {
-    Column(Modifier.fillMaxSize()) {
-        // Search entry (before Recent).
-        Row(
-            Modifier.fillMaxWidth().padding(16.dp, 12.dp, 16.dp, 6.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable { onSearch() }
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Search documents", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    LazyColumn(Modifier.fillMaxSize()) {
+        // Search entry.
+        item {
+            Row(
+                Modifier.fillMaxWidth().padding(16.dp, 12.dp, 16.dp, 6.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { onSearch() }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(Icons.Filled.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Search documents", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
 
         // Documents folder — holds every PDF.
-        ListItem(
-            modifier = Modifier.clickable { onDocuments() },
-            leadingContent = {
-                Box(
-                    Modifier.size(44.dp).clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                    contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Filled.Folder, null, tint = MaterialTheme.colorScheme.onSecondaryContainer) }
-            },
-            headlineContent = { Text("Documents") },
-            supportingContent = { Text("${state.documents.size} files") },
-            trailingContent = { Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
-        )
-        HorizontalDivider()
+        item {
+            ListItem(
+                modifier = Modifier.clickable { onDocuments() },
+                leadingContent = {
+                    Box(
+                        Modifier.size(44.dp).clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.secondaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Filled.Folder, null, tint = MaterialTheme.colorScheme.onSecondaryContainer) }
+                },
+                headlineContent = { Text("Documents") },
+                supportingContent = { Text("${state.documents.size} files") },
+                trailingContent = { Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+            )
+            HorizontalDivider()
+        }
 
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Recent", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            SyncPill(allSynced = state.documents.isNotEmpty() && state.documents.all { it.syncState == "SYNCED" })
+        // Tools — each conversion listed separately (moved off the old Tools hub).
+        item {
+            Text(
+                "Tools",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+        item {
+            Column(
+                Modifier.padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                ToolCard("Edit PDF", "Reorder, crop, rotate, erase pages", Color(0xFF4A58C4), Icons.Filled.Edit, onEditPdf)
+                ToolCard("Image to PDF", "Combine photos into one PDF", Color(0xFFE5533C), Icons.Filled.PictureAsPdf, onImageToPdf)
+                ToolCard("PDF to image", "Export each page as PNG", Color(0xFF1E9E5A), Icons.Filled.Image, onPdfToImage)
+                ToolCard("Convert JPEG / PNG", "Switch an image's format", Color(0xFFE0A020), Icons.Filled.SwapHoriz, onConvertImage)
+                ToolCard("Video to image", "Grab a frame from a video", Color(0xFF7C4DFF), Icons.Filled.Videocam, onVideoToImage)
+            }
+        }
+
+        item {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Recent", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                SyncPill(allSynced = state.documents.isNotEmpty() && state.documents.all { it.syncState == "SYNCED" })
+            }
         }
 
         when {
-            state.isLoading ->
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            state.documents.isEmpty() ->
-                ComingSoon(Icons.Filled.DocumentScanner, "No documents yet", "Tap Scan to capture your first document.")
-            else -> LazyColumn(Modifier.fillMaxSize()) {
-                items(state.documents.take(3), key = { it.id }) { doc ->
-                    DocumentRow(doc, onOpen, onRename, onCompress, onDelete)
-                    HorizontalDivider()
+            state.isLoading -> item {
+                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            }
+            state.documents.isEmpty() -> item {
+                Column(
+                    Modifier.fillMaxWidth().padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(Icons.Filled.DocumentScanner, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(8.dp))
+                    Text("No documents yet", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "Tap Scan to capture your first document.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
+            }
+            else -> items(state.documents.take(3), key = { it.id }) { doc ->
+                DocumentRow(doc, onOpen, onRename, onCompress, onDelete)
+                HorizontalDivider()
+            }
+        }
+    }
+}
+
+@Composable
+private fun ToolCard(title: String, subtitle: String, color: Color, icon: ImageVector, onClick: () -> Unit) {
+    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(
+            Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Box(
+                Modifier.size(46.dp).clip(CircleShape).background(color),
+                contentAlignment = Alignment.Center,
+            ) { Icon(icon, contentDescription = null, tint = Color.White) }
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
             }
         }
     }
@@ -567,7 +688,7 @@ private fun RenameDialog(current: String, onDismiss: () -> Unit, onConfirm: (Str
 private fun HomeBottomBar(
     onHome: () -> Unit,
     onScan: () -> Unit,
-    onTools: () -> Unit,
+    onDocuments: () -> Unit,
 ) {
     Column(Modifier.background(MaterialTheme.colorScheme.surface).navigationBarsPadding()) {
         HorizontalDivider()
@@ -595,15 +716,7 @@ private fun HomeBottomBar(
                 Spacer(Modifier.height(2.dp))
                 Text("Scan", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             }
-            // Multi-tool hub — colorful to stand out.
-            Column(
-                Modifier.weight(1f).clickable(onClick = onTools),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Icon(Icons.Filled.AutoAwesome, "Tools", tint = Color(0xFF7C4DFF))
-                Text("Tools", style = MaterialTheme.typography.labelSmall, color = Color(0xFF7C4DFF))
-            }
+            NavTab(Modifier.weight(1f), Icons.Filled.Folder, "Documents", false, onDocuments)
         }
     }
 }
